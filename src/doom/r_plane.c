@@ -60,8 +60,7 @@ visplane_t *ceilingplane;
 #endif
 
 #if !NO_DRAWSEGS
-// ?
-#define MAXOPENINGS    SCREENWIDTH*64
+// MAXOPENINGS comes from r_plane.h (bounded on the JaszczurHAL port).
 short openings[MAXOPENINGS];
 short *lastopening;
 #endif

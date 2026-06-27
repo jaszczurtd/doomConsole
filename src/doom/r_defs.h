@@ -55,7 +55,14 @@ typedef struct xy_positioned_s {
 #define SIL_TOP			2
 #define SIL_BOTH		3
 
+// Bounded on the JaszczurHAL/Pico port to fit SRAM; R_StoreWallRange already
+// stops adding drawsegs once this is reached (r_segs.c), so excess walls simply
+// stop contributing sprite-clip silhouettes instead of crashing.
+#if JASZCZURHAL_PORT
+#define MAXDRAWSEGS		128
+#else
 #define MAXDRAWSEGS		256
+#endif
 #endif
 
 
@@ -413,7 +420,7 @@ typedef pixel_t		lighttable_t;
 
 
 
-#ifndef NO_DRAWSEGS
+#if !NO_DRAWSEGS
 //
 // ?
 //
@@ -458,10 +465,12 @@ typedef struct vissprite_s
     int			x1;
     int			x2;
 
-#if !DOOM_TINY
+// The JaszczurHAL port enables the classic drawseg silhouette sprite clip,
+// which needs these for the line-side and silhouette-height tests.
+#if !DOOM_TINY || JASZCZURHAL_PORT
     // for line side calculation
     fixed_t		gx;
-    fixed_t		gy;		
+    fixed_t		gy;
 
     // global bottom / top for silhouette clipping
     fixed_t		gz;

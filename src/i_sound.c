@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 #if PICO_BUILD
-#include "i_picosound.h"
+#include "doom_sound_hal.h"
 #endif
 
 //#include "SDL_mixer.h"

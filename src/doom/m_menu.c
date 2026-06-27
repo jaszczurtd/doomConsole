@@ -62,7 +62,7 @@
 #include "m_menu.h"
 
 #if PICO_DOOM && USE_PICO_NET
-#include "piconet.h"
+#include "doom_piconet_compat.h"
 #include "net_client.h"
 
 #define NET_MENU 1

@@ -1,6 +1,6 @@
 {
     "arduino.cliPath": "arduino-cli",
-    "arduino.fqbn": "rp2040:rp2040:waveshare_rp2040_plus:flash=4194304_0,usbstack=tinyusb",
+    "arduino.fqbn": "rp2040:rp2040:waveshare_rp2040_plus:flash=4194304_0,freq=276,usbstack=tinyusb",
     "arduino.boardDescription": "Waveshare RP2040 Plus 4MB Doom (TinyUSB)",
     "arduino.uploadPort": "/dev/ttyACM0",
     "arduino.sketchbookPath": "/home/jaszczurtd/development/projects_git",

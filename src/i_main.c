@@ -33,7 +33,7 @@
 #endif
 #endif
 #if USE_PICO_NET
-#include "piconet.h"
+#include "doom_piconet_compat.h"
 #endif
 #include "doomtype.h"
 #include "i_system.h"

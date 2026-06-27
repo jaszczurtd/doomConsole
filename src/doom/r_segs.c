@@ -110,7 +110,10 @@ const lighttable_t**	walllights;
 int8_t *walllights;
 #endif
 
-#if !NO_DRAWSEGS
+// The JaszczurHAL port keeps masked midtextures on the inline WHD path; only
+// the drawseg sprite-clip silhouettes are enabled.  This vanilla deferred
+// masked-seg renderer is non-WHD and stays out of the port build.
+#if !NO_DRAWSEGS && !JASZCZURHAL_PORT
 short *maskedtexturecol;
 //
 // R_RenderMaskedSegRange
@@ -423,6 +426,14 @@ void R_RenderSegLoop(void) {
                     dc_yh = mid;
                     dc_texturemid = rw_toptexturemid;
                     dc_source = R_GetColumn(toptexture, texturecolumn);
+#if JASZCZURHAL_PORT && NO_DRAWSEGS && DOOM_SPRITE_OCCLUSION
+                    // The upper wall of a two-sided line is opaque too (e.g. a
+                    // closed door reaching the floor); record it so sprites
+                    // behind it stop bleeding through.  The opening below stays
+                    // clear, so sprites seen through it are still drawn.
+                    DoomSpriteOcclusion_RecordWallColumn(rw_x, yl, mid,
+                                                         rw_scale);
+#endif
 #if PD_COLUMNS
                     pd_add_column2(PDCOL_TOP);
 #endif
@@ -452,6 +463,14 @@ void R_RenderSegLoop(void) {
                     dc_texturemid = rw_bottomtexturemid;
                     dc_source = R_GetColumn(bottomtexture,
                                             texturecolumn);
+#if JASZCZURHAL_PORT && NO_DRAWSEGS && DOOM_SPRITE_OCCLUSION
+                    // The lower wall (e.g. a raised step in the next sector) is
+                    // opaque; it reaches the floor, so floor items behind it
+                    // would otherwise bleed through.  Recording it lets the
+                    // sprite clip keep only the part above the step.
+                    DoomSpriteOcclusion_RecordWallColumn(rw_x, mid, yh,
+                                                         rw_scale);
+#endif
 #if PD_COLUMNS
                     pd_add_column2(PDCOL_BOTTOM);
 #endif
@@ -476,7 +495,7 @@ void R_RenderSegLoop(void) {
             if (maskedtexture) {
                 // save texturecol
                 //  for backdrawing of masked mid texture
-#if !NO_DRAWSEGS
+#if !NO_DRAWSEGS && !JASZCZURHAL_PORT
                 maskedtexturecol[rw_x] = texturecolumn;
 #else
                 // graham: added drawing here
@@ -762,7 +781,7 @@ R_StoreWallRange
             // masked midtexture
             maskedtexture_tex = texture_translation(side_midtexture(sidedef));
             maskedtexture = lookup_masked_texture(maskedtexture_tex);
-#if NO_DRAWSEGS
+#if NO_DRAWSEGS || JASZCZURHAL_PORT
             // find positioning
             if (line_flags(seg_linedef(curline)) & ML_DONTPEGBOTTOM) {
                 rw_maskedtexturemid = frontsector->rawfloorheight > backsector->rawfloorheight
@@ -779,9 +798,17 @@ R_StoreWallRange
             }
             rw_maskedtexturemid += side_rowoffset(seg_sidedef(curline));
 #else
-            maskedtexturecol = lastopening - rw_x;
-            ds_p->maskedtexturecol = maskedtexturecol;
-            lastopening += rw_stopx - rw_x;
+            // Guard the bounded opening pool: if there is no room for this
+            // seg's masked column table, drop the masked midtexture for this
+            // seg rather than overrunning openings[].
+            if ((lastopening - openings) + (rw_stopx - rw_x) <= MAXOPENINGS) {
+                maskedtexturecol = lastopening - rw_x;
+                ds_p->maskedtexturecol = maskedtexturecol;
+                lastopening += rw_stopx - rw_x;
+            } else {
+                maskedtexture = 0;
+                ds_p->maskedtexturecol = NULL;
+            }
 #endif
         }
     }
@@ -905,16 +932,27 @@ R_StoreWallRange
     // save sprite clipping info
     if (((ds_p->silhouette & SIL_TOP) || maskedtexture)
         && !ds_p->sprtopclip) {
-        memcpy(lastopening, ceilingclip + start, sizeof(*lastopening) * (rw_stopx - start));
-        ds_p->sprtopclip = lastopening - start;
-        lastopening += rw_stopx - start;
+        if ((lastopening - openings) + (rw_stopx - start) <= MAXOPENINGS) {
+            memcpy(lastopening, ceilingclip + start, sizeof(*lastopening) * (rw_stopx - start));
+            ds_p->sprtopclip = lastopening - start;
+            lastopening += rw_stopx - start;
+        } else {
+            // Pool exhausted: fall back to the shared full-clip array.  This
+            // over-occludes the seg (sprite top fully clipped) instead of
+            // overrunning openings[]; conservative and crash-free.
+            ds_p->sprtopclip = maxfloorceilingcliparray;
+        }
     }
 
     if (((ds_p->silhouette & SIL_BOTTOM) || maskedtexture)
         && !ds_p->sprbottomclip) {
-        memcpy(lastopening, floorclip + start, sizeof(*lastopening) * (rw_stopx - start));
-        ds_p->sprbottomclip = lastopening - start;
-        lastopening += rw_stopx - start;
+        if ((lastopening - openings) + (rw_stopx - start) <= MAXOPENINGS) {
+            memcpy(lastopening, floorclip + start, sizeof(*lastopening) * (rw_stopx - start));
+            ds_p->sprbottomclip = lastopening - start;
+            lastopening += rw_stopx - start;
+        } else {
+            ds_p->sprbottomclip = minfloorceilingcliparray;
+        }
     }
 
     if (maskedtexture && !(ds_p->silhouette & SIL_TOP)) {

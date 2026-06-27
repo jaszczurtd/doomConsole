@@ -23,40 +23,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "doom_main_config.h"
+
 typedef struct audio_buffer audio_buffer_t;
-
-#ifndef DOOM_HAL_AUDIO_PWM_PIN
-#define DOOM_HAL_AUDIO_PWM_PIN 6u
-#endif
-
-#ifndef DOOM_HAL_AUDIO_PWM_BITS
-#define DOOM_HAL_AUDIO_PWM_BITS 12u
-#endif
-
-#ifndef DOOM_HAL_AUDIO_PWM_PERIOD_TICKS
-#define DOOM_HAL_AUDIO_PWM_PERIOD_TICKS (1u << DOOM_HAL_AUDIO_PWM_BITS)
-#endif
-
-#ifndef DOOM_HAL_AUDIO_PWM_IDLE
-#define DOOM_HAL_AUDIO_PWM_IDLE (DOOM_HAL_AUDIO_PWM_PERIOD_TICKS / 2u)
-#endif
-
-#ifndef DOOM_HAL_AUDIO_BLOCK_SIZE
-#define DOOM_HAL_AUDIO_BLOCK_SIZE 1024u
-#endif
-
-#ifndef PICO_SOUND_SAMPLE_FREQ
-#ifdef F_CPU
-#define PICO_SOUND_SAMPLE_FREQ ((uint32_t)(F_CPU / DOOM_HAL_AUDIO_PWM_PERIOD_TICKS))
-#else
-#define PICO_SOUND_SAMPLE_FREQ 48828u
-#endif
-#endif
-
-#ifndef NUM_SOUND_CHANNELS
-// This is the default in-game channel count, not 16.
-#define NUM_SOUND_CHANNELS 8
-#endif
 
 void I_PicoSoundSetMusicGenerator(void (*generator)(audio_buffer_t *buffer));
 bool I_PicoSoundIsInitialized(void);

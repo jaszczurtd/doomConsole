@@ -12,9 +12,19 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <JaszczurHAL.h>
+#include <utils/tools_api.h>
+
 #include <hal/hal_display.h>
 #include <hal/hal_sync.h>
 #include <hal/hal_system.h>
+
+/* Diagnostic only: confirm the real system/peripheral clocks so we can tell
+ * whether the TFT SPI is actually running at the requested rate. */
+#if __has_include(<hardware/clocks.h>)
+#include <hardware/clocks.h>
+#define DOOM_HAVE_PICO_CLOCKS 1
+#endif
 
 #include "doomtype.h"
 #include "i_video.h"
@@ -32,41 +42,10 @@
 #include "doom/m_menu.h"
 #include "doom/st_stuff.h"
 #include "doom/wi_stuff.h"
-#include "jaszczurhal/doom_boot_log.h"
+#include "doom_main_config.h"
 
 void DoomRenderDiag_MarkPhase(uint8_t phase);
-
-#ifndef DOOM_HAL_TFT_CS_PIN
-#define DOOM_HAL_TFT_CS_PIN 17u
-#endif
-
-#ifndef DOOM_HAL_TFT_DC_PIN
-#define DOOM_HAL_TFT_DC_PIN 20u
-#endif
-
-#ifndef DOOM_HAL_TFT_RST_PIN
-#define DOOM_HAL_TFT_RST_PIN 21u
-#endif
-
-#ifndef DOOM_HAL_TFT_NATIVE_WIDTH
-#define DOOM_HAL_TFT_NATIVE_WIDTH 240
-#endif
-
-#ifndef DOOM_HAL_TFT_NATIVE_HEIGHT
-#define DOOM_HAL_TFT_NATIVE_HEIGHT 320
-#endif
-
-#ifndef DOOM_HAL_TFT_ROTATION_DEG
-#define DOOM_HAL_TFT_ROTATION_DEG 90
-#endif
-
-#ifndef DOOM_HAL_TFT_INVERT
-#define DOOM_HAL_TFT_INVERT HAL_DISPLAY_INVERT_OFF
-#endif
-
-#ifndef DOOM_HAL_TFT_COLOR_ORDER
-#define DOOM_HAL_TFT_COLOR_ORDER HAL_DISPLAY_COLOR_ORDER_RGB
-#endif
+extern uint32_t doom_render_us_hud;
 
 should_be_const constcharstar video_driver = "jaszczurhal-tft";
 boolean screenvisible = true;
@@ -109,7 +88,9 @@ fixed_t pd_scale = FRACUNIT;
 
 static uint16_t s_palette_rgb565[256];
 static uint8_t s_palette_rgb888[256][3];
-static uint8_t s_line_rgb565_be[SCREENWIDTH * 2];
+// Convert/transfer several lines per DMA call to amortise the per-call DMA
+// setup + blocking-wait overhead (200 single-line DMAs per frame was costly).
+static uint8_t s_line_rgb565_be[SCREENWIDTH * 2 * DOOM_FLUSH_LINES];
 static bool s_palette_ready = false;
 static bool s_display_ready = false;
 static int s_active_palette_num = 0;
@@ -125,7 +106,6 @@ static volatile uint32_t s_async_wait_count = 0;
 static volatile uint32_t s_async_wait_us = 0;
 
 #if USE_WHD
-#define HAL_PATCH_LIST_MAX_ENTRIES VPATCHLIST_COUNT_OVERLAY
 static vpatchlist_t s_hal_patch_list[HAL_PATCH_LIST_MAX_ENTRIES + 1];
 
 static void begin_hal_patch_list(void)
@@ -308,7 +288,7 @@ static void configure_display_window(void)
 
 void I_InitGraphics(void)
 {
-    DoomBootLog_Printf("[video] I_InitGraphics begin\n");
+    deb("[video] I_InitGraphics begin\n");
 
     memset(s_video_buffer, 0, sizeof(s_video_buffer));
     I_VideoBuffer = s_video_buffer;
@@ -322,16 +302,23 @@ void I_InitGraphics(void)
                                DOOM_HAL_TFT_INVERT,
                                DOOM_HAL_TFT_COLOR_ORDER)) {
         s_display_ready = false;
-        DoomBootLog_Printf("[video] I_InitGraphics display configure FAIL\n");
+        deb("[video] I_InitGraphics display configure FAIL\n");
         return;
     }
 
     configure_display_window();
-    DoomBootLog_Printf("[video] I_InitGraphics display=%dx%d window=(%d,%d) "
+    deb("[video] I_InitGraphics display=%dx%d window=(%d,%d) "
                        "ready=%s\n",
                        hal_display_get_width(), hal_display_get_height(),
                        s_display_x, s_display_y,
                        s_display_ready ? "OK" : "FAIL");
+#ifdef DOOM_HAVE_PICO_CLOCKS
+    deb("[video] clk_sys=%lu Hz clk_peri=%lu Hz "
+                       "(TFT SPI requested %lu Hz)\n",
+                       (unsigned long)clock_get_hz(clk_sys),
+                       (unsigned long)clock_get_hz(clk_peri),
+                       (unsigned long)JH_ILI9341_SPI_DEFAULT_HZ);
+#endif
 }
 
 void I_GraphicsCheckCommandLine(void) {}
@@ -381,17 +368,25 @@ static void finish_update_buffer(const pixel_t *buffer)
         return;
     }
 
-    for (int y = 0; y < SCREENHEIGHT; ++y) {
-        const pixel_t *src = buffer + y * SCREENWIDTH;
-
-        for (int x = 0; x < SCREENWIDTH; ++x) {
-            const uint16_t color = s_palette_rgb565[src[x]];
-            s_line_rgb565_be[x * 2] = (uint8_t)(color >> 8);
-            s_line_rgb565_be[x * 2 + 1] = (uint8_t)color;
+    for (int y0 = 0; y0 < SCREENHEIGHT; y0 += DOOM_FLUSH_LINES) {
+        int lines = SCREENHEIGHT - y0;
+        if (lines > DOOM_FLUSH_LINES) {
+            lines = DOOM_FLUSH_LINES;
         }
 
-        if (!hal_display_write_pixels_dma(s_line_rgb565_be,
-                                          sizeof(s_line_rgb565_be))) {
+        uint8_t *dst = s_line_rgb565_be;
+        for (int ly = 0; ly < lines; ++ly) {
+            const pixel_t *src = buffer + (y0 + ly) * SCREENWIDTH;
+            for (int x = 0; x < SCREENWIDTH; ++x) {
+                const uint16_t color = s_palette_rgb565[src[x]];
+                *dst++ = (uint8_t)(color >> 8);
+                *dst++ = (uint8_t)color;
+            }
+        }
+
+        if (!hal_display_write_pixels_dma(
+                s_line_rgb565_be,
+                (size_t)lines * SCREENWIDTH * 2)) {
             break;
         }
     }
@@ -467,6 +462,14 @@ void I_FinishUpdate(void)
     }
 
     update_palette_if_needed();
+#if DOOM_VIDEO_SYNC_FLUSH
+    DoomVideo_WaitForAsyncFlush();
+    finish_update_buffer(I_VideoBuffer);
+
+    hal_critical_section_enter();
+    ++s_async_flush_count;
+    hal_critical_section_exit();
+#else
     DoomVideo_WaitForAsyncFlush();
 
     hal_critical_section_enter();
@@ -474,6 +477,7 @@ void I_FinishUpdate(void)
     s_flush_busy = 1u;
     s_flush_pending = 1u;
     hal_critical_section_exit();
+#endif
 }
 
 void I_BeginRead(void) {}
@@ -506,6 +510,7 @@ void pd_end_frame(int wipe_start)
     (void)wipe_start;
 
     DoomRenderDiag_MarkPhase(5u);
+    const uint32_t hud_t0 = hal_micros();
 
 #if USE_WHD
     begin_hal_patch_list();
@@ -542,6 +547,7 @@ void pd_end_frame(int wipe_start)
     flush_hal_patch_list();
 #endif
 
+    doom_render_us_hud = hal_micros() - hud_t0;
     DoomRenderDiag_MarkPhase(6u);
     I_FinishUpdate();
     DoomRenderDiag_MarkPhase(7u);

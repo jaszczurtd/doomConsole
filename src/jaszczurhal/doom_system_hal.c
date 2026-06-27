@@ -55,22 +55,10 @@ extern void I_InputInit();
 #include "w_wad.h"
 #include "z_zone.h"
 #include "picodoom.h"
+#include "doom_main_config.h"
 
 #define DEFAULT_RAM 16 /* MiB */
 #define MIN_RAM     4  /* MiB */
-
-#ifndef JASZCZURHAL_ZONE_BYTES
-#define JASZCZURHAL_ZONE_BYTES (96 * 1024)
-#endif
-
-#ifndef JASZCZURHAL_ZONE_MIN_BYTES
-#define JASZCZURHAL_ZONE_MIN_BYTES (72 * 1024)
-#endif
-
-#ifndef JASZCZURHAL_HEAP_RESERVE_BYTES
-#define JASZCZURHAL_HEAP_RESERVE_BYTES (24 * 1024)
-#endif
-
 
 typedef struct atexit_listentry_s atexit_listentry_t;
 
@@ -140,15 +128,42 @@ static byte *AutoAllocMemory(int *size, int default_ram, int min_ram)
            (void *)heap_start, (void *)heap_limit, available,
            JASZCZURHAL_HEAP_RESERVE_BYTES, *size);
 
+    bool tried_minimum = false;
     while (*size >= JASZCZURHAL_ZONE_MIN_BYTES)
     {
+        if (*size == JASZCZURHAL_ZONE_MIN_BYTES)
+        {
+            tried_minimum = true;
+        }
+
         zonemem = malloc(*size);
         if (zonemem != NULL)
         {
             return zonemem;
         }
 
-        *size -= 4 * 1024;
+        if (*size == JASZCZURHAL_ZONE_MIN_BYTES)
+        {
+            break;
+        }
+        if (*size - JASZCZURHAL_ZONE_MIN_BYTES < 4 * 1024)
+        {
+            *size = JASZCZURHAL_ZONE_MIN_BYTES;
+        }
+        else
+        {
+            *size -= 4 * 1024;
+        }
+    }
+
+    if (!tried_minimum && *size > JASZCZURHAL_ZONE_MIN_BYTES)
+    {
+        *size = JASZCZURHAL_ZONE_MIN_BYTES;
+        zonemem = malloc(*size);
+        if (zonemem != NULL)
+        {
+            return zonemem;
+        }
     }
 
     I_Error("Unable to allocate %i bytes of RAM for zone", *size);
@@ -337,7 +352,7 @@ void I_BindVariables(void)
 #endif
 #include "whddata.h"
 #if USE_PICO_NET
-#include "piconet.h"
+#include "doom_piconet_compat.h"
 #endif
 
 int8_t at_exit_screen;

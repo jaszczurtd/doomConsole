@@ -26,9 +26,9 @@
 #include "deh_defs.h"
 #include "deh_io.h"
 #include "deh_main.h"
-#include "deh_mapping.h"
 
 #if !NO_USE_DEH
+#include "deh_mapping.h"
 DEH_BEGIN_MAPPING(state_mapping, state_t)
   DEH_MAPPING("Sprite number",    sprite)
   DEH_MAPPING("Sprite subnumber", frame)

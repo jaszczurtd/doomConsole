@@ -62,6 +62,9 @@ static uint16_t doom_sprite_diag_seen;
 static uint16_t doom_sprite_diag_projected;
 static uint16_t doom_sprite_diag_queued;
 static uint16_t doom_sprite_diag_drawn;
+// Diagnostics for the masked-sprite post buffer (ysegs) overflow hypothesis.
+static uint16_t doom_sprite_seg_overflow; // posts dropped because ysegs was full
+static uint8_t doom_sprite_seg_max;       // max posts seen in one sprite column
 
 static void DoomSpriteDiag_Inc(uint16_t *value)
 {
@@ -77,6 +80,12 @@ void DoomRenderSpriteDiag_Get(uint16_t *seen, uint16_t *projected,
     *projected = doom_sprite_diag_projected;
     *queued = doom_sprite_diag_queued;
     *drawn = doom_sprite_diag_drawn;
+}
+
+void DoomRenderSpriteSegDiag_Get(uint16_t *overflow, uint8_t *seg_max)
+{
+    *overflow = doom_sprite_seg_overflow;
+    *seg_max = doom_sprite_seg_max;
 }
 
 void DoomRenderOcclusionDiag_Get(uint16_t *columns, uint16_t *clipped)
@@ -441,6 +450,8 @@ void R_ClearSprites(void) {
     doom_sprite_diag_projected = 0;
     doom_sprite_diag_queued = 0;
     doom_sprite_diag_drawn = 0;
+    doom_sprite_seg_overflow = 0;
+    doom_sprite_seg_max = 0;
 #endif
 }
 
@@ -629,11 +640,29 @@ void R_DrawMaskedColumn(maskedcolumn_t column) {
                 if (yl <= yh) {
 
                     if (yl > last) {
+#if JASZCZURHAL_PORT
+                        // Bounds guard: never write past ysegs[].  Dropping
+                        // excess posts is far better than the stack corruption
+                        // that produced black sprite glitches.  base_offset is
+                        // also clamped so the uint8_t store cannot wrap.
+                        if (seg_count >= MAX_SEGS || base_offset >= 256) {
+                            DoomSpriteDiag_Inc(&doom_sprite_seg_overflow);
+                        } else {
+                            ysegs[seg_count*3] = yl;
+                            ysegs[seg_count*3+1] = yh;
+                            ysegs[seg_count*3+2] = base_offset;
+                            seg_count++;
+                            if (seg_count > doom_sprite_seg_max) {
+                                doom_sprite_seg_max = (uint8_t)seg_count;
+                            }
+                        }
+#else
                         ysegs[seg_count*3] = yl;
                         ysegs[seg_count*3+1] = yh;
                         assert(base_offset < 256);
                         ysegs[seg_count*3+2] = base_offset;
                         seg_count++;
+#endif
                     }
                     last = yh;
                 }
@@ -849,7 +878,7 @@ void R_ProjectSprite(mobj_t *thing) {
 #endif
     vis->mobjflags = thing->flags;
     vis->scale = xscale << detailshift;
-#if !DOOM_TINY
+#if !DOOM_TINY || JASZCZURHAL_PORT
     vis->gx = thing->xy.x;
     vis->gy = thing->xy.y;
     vis->gz = thing->z;
@@ -1305,7 +1334,9 @@ void R_DrawMasked(void) {
     }
 
     // todo graham - need to gather the masked seg ranges
-#if !NO_DRAWSEGS
+    // The JaszczurHAL port draws masked midtextures inline (WHD path) during the
+    // seg loop, so it does not defer them to drawsegs here.
+#if !NO_DRAWSEGS && !JASZCZURHAL_PORT
     drawseg_t *ds;
     // render any remaining masked mid textures
     for (ds = ds_p - 1; ds >= drawsegs; ds--)

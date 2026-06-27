@@ -42,12 +42,34 @@
 #include "hardware/gpio.h"
 #endif
 #endif
+
+#if JASZCZURHAL_PORT
+extern uint32_t hal_micros(void);
+// Per-frame render phase timings (microseconds), sampled by the render log.
+uint32_t doom_render_us_bsp;    // BSP traversal and wall column rendering
+uint32_t doom_render_us_planes; // floor/ceiling span rendering
+uint32_t doom_render_us_masked; // world sprite/masked drawing
+uint32_t doom_render_us_psprite; // player weapon psprite drawing
+uint32_t doom_render_us_hud;     // status/HUD/menu overlay drawing
+void DoomRenderTimeDiag_Get(uint32_t *bsp_us, uint32_t *planes_us,
+                            uint32_t *masked_us, uint32_t *psprite_us,
+                            uint32_t *hud_us)
+{
+    *bsp_us = doom_render_us_bsp;
+    *planes_us = doom_render_us_planes;
+    *masked_us = doom_render_us_masked;
+    *psprite_us = doom_render_us_psprite;
+    *hud_us = doom_render_us_hud;
+}
+#endif
 #if USE_WHD
 #include "p_spec.h"
 #endif
 
 #if JASZCZURHAL_PORT
 void DoomHAL_RenderQueuedPlanes(void);
+void DoomHAL_RenderQueuedPlanesAsyncStart(void);
+void DoomHAL_RenderQueuedPlanesAsyncWait(void);
 #endif
 
 // Fineangles in the SCREENWIDTH wide window.
@@ -1210,11 +1232,24 @@ void R_RenderPlayerView(player_t *player) {
     //  but does not draw on side views
     if (!viewangleoffset) {
         extern void R_DrawPlayerSprites(void);
+#if JASZCZURHAL_PORT
+        const uint32_t psprite_t0 = hal_micros();
+#endif
         R_DrawPlayerSprites();
+#if JASZCZURHAL_PORT
+        doom_render_us_psprite = hal_micros() - psprite_t0;
+#endif
+#if JASZCZURHAL_PORT
+    } else {
+        doom_render_us_psprite = 0;
+#endif
     }
 #endif
 
     node_coord_t bbox[4] = { 32767, -32768, -32768, 32767 };
+#if JASZCZURHAL_PORT
+    const uint32_t doom_t0 = hal_micros();
+#endif
     R_RenderBSPNode(numnodes -1, bbox);
 #endif
 #if PICO_ON_DEVICE
@@ -1224,18 +1259,42 @@ void R_RenderPlayerView(player_t *player) {
     // Check for new console commands.
     NetUpdate();
 
+#if JASZCZURHAL_PORT && DOOM_DUAL_CORE_COLUMNS
+    // Draw the wall/sky/midtex columns deferred during BSP (Stage 1: core0;
+    // Stage 3: split across both cores).  Kept before doom_t1 so `bsp` timing
+    // still covers the wall draw work.
+    extern void pd_flush_columns(void);
+    pd_flush_columns();
+#endif
+
 #if !NO_VISPLANE_GUTS
     // Visplanes
     R_DrawPlanes();
 #endif
 #if JASZCZURHAL_PORT
+    const uint32_t doom_t1 = hal_micros();
+#if DOOM_RENDER_ASYNC_PLANES
+    DoomHAL_RenderQueuedPlanesAsyncStart();
+    NetUpdate();
+    DoomHAL_RenderQueuedPlanesAsyncWait();
+#else
     DoomHAL_RenderQueuedPlanes();
+#endif
+    const uint32_t doom_t2 = hal_micros();
 #endif
 
     // Check for new console commands.
+#if !DOOM_RENDER_ASYNC_PLANES
     NetUpdate();
+#endif
 
     R_DrawMasked();
+#if JASZCZURHAL_PORT
+    const uint32_t doom_t3 = hal_micros();
+    doom_render_us_bsp = doom_t1 - doom_t0;
+    doom_render_us_planes = doom_t2 - doom_t1;
+    doom_render_us_masked = doom_t3 - doom_t2;
+#endif
 
     // Check for new console commands.
     NetUpdate();

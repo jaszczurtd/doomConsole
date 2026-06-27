@@ -80,14 +80,16 @@
 
 #include "d_main.h"
 #if PICO_BUILD
-#include "i_picosound.h"
+#include "doom_sound_hal.h"
 #if USB_SUPPORT
 #include "tusb.h"
 #endif
 #endif
 
 #if JASZCZURHAL_PORT
-#define JH_BOOT_TRACE(...) DoomBootLog_Printf(__VA_ARGS__)
+#include <JaszczurHAL.h>
+#include <utils/tools_api.h>
+#define JH_BOOT_TRACE(...) deb(__VA_ARGS__)
 #else
 #define JH_BOOT_TRACE(...) ((void)0)
 #endif

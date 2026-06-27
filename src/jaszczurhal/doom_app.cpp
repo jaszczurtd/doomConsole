@@ -11,8 +11,17 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/* Raise clk_peri so the TFT SPI bus can run at its proper speed.  Arduino-Pico
+ * leaves clk_peri on PLL_USB (48 MHz), which caps SPI at 24 MHz regardless of
+ * the requested clock or the CPU clock.  USB CDC (console) is on PLL_USB and
+ * unaffected; PWM audio is on clk_sys and unaffected. */
+#if __has_include(<hardware/clocks.h>)
+#include <hardware/clocks.h>
+#define DOOM_HAVE_PICO_CLOCKS 1
+#endif
+
 #include "i_main.h"
-#include "jaszczurhal/doom_boot_log.h"
+#include "doom_main_config.h"
 #include "jaszczurhal/doom_storage_hal.h"
 #include "picodoom.h"
 
@@ -20,70 +29,6 @@ extern "C" void DoomRenderDiag_ReportRetained(void);
 extern "C" void DoomRenderDiag_StartRun(void);
 
 bool core1_separate_stack = true;
-
-#ifndef DOOM_HAL_TFT_SCK_PIN
-#define DOOM_HAL_TFT_SCK_PIN 18u
-#endif
-
-#ifndef DOOM_HAL_TFT_MOSI_PIN
-#define DOOM_HAL_TFT_MOSI_PIN 19u
-#endif
-
-#ifndef DOOM_HAL_TFT_MISO_PIN
-#define DOOM_HAL_TFT_MISO_PIN 16u
-#endif
-
-#ifndef DOOM_HAL_TFT_CS_PIN
-#define DOOM_HAL_TFT_CS_PIN 17u
-#endif
-
-#ifndef DOOM_HAL_TFT_DC_PIN
-#define DOOM_HAL_TFT_DC_PIN 20u
-#endif
-
-#ifndef DOOM_HAL_TFT_RST_PIN
-#define DOOM_HAL_TFT_RST_PIN 21u
-#endif
-
-#ifndef DOOM_HAL_TFT_NATIVE_WIDTH
-#define DOOM_HAL_TFT_NATIVE_WIDTH 240
-#endif
-
-#ifndef DOOM_HAL_TFT_NATIVE_HEIGHT
-#define DOOM_HAL_TFT_NATIVE_HEIGHT 320
-#endif
-
-#ifndef DOOM_HAL_TFT_ROTATION_DEG
-#define DOOM_HAL_TFT_ROTATION_DEG 90
-#endif
-
-#ifndef DOOM_HAL_TFT_INVERT
-#define DOOM_HAL_TFT_INVERT HAL_DISPLAY_INVERT_OFF
-#endif
-
-#ifndef DOOM_HAL_TFT_COLOR_ORDER
-#define DOOM_HAL_TFT_COLOR_ORDER HAL_DISPLAY_COLOR_ORDER_RGB
-#endif
-
-#ifndef DOOM_BOOT_LED_PIN
-#define DOOM_BOOT_LED_PIN 25u
-#endif
-
-#ifndef DOOM_BOOT_DIAG_HOLD_MS
-#define DOOM_BOOT_DIAG_HOLD_MS 8000u
-#endif
-
-#ifndef DOOM_BOOT_BLOCKED_LOG_MS
-#define DOOM_BOOT_BLOCKED_LOG_MS 1000u
-#endif
-
-#ifndef DOOM_BOOT_BLOCKED_SCAN_MS
-#define DOOM_BOOT_BLOCKED_SCAN_MS 5000u
-#endif
-
-#ifndef DOOM_WHD_SCAN_STEP_BYTES
-#define DOOM_WHD_SCAN_STEP_BYTES 4u
-#endif
 
 static bool s_doom_started = false;
 static bool s_boot_blocked = false;
@@ -275,11 +220,9 @@ static void boot_log_blocked_status(uint32_t now) {
 }
 
 void app_start(void) {
-  hal_delay_ms(4000u);
   hal_fault_subsystem_init();
   const bool stack_guard_ready = hal_stack_guard_init();
   debugInit();
-  DoomBootLog_Init();
   hal_deb_set_prefix("DOOM");
 
   deb("");
@@ -318,6 +261,20 @@ void app_start(void) {
 
 #ifdef F_CPU
   deb("[boot] F_CPU=%lu", (unsigned long)F_CPU);
+#endif
+
+#ifdef DOOM_HAVE_PICO_CLOCKS
+  // Move clk_peri from PLL_USB (48 MHz) to PLL_SYS so the TFT SPI bus is no
+  // longer capped at 24 MHz.  Done before any SPI/UART/I2C peripheral is
+  // configured (display init happens later in I_DoomMain).
+  {
+    const uint32_t sys_hz = clock_get_hz(clk_sys);
+    clock_configure(clk_peri, 0,
+                    CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                    sys_hz, sys_hz);
+    deb("[boot] clk_peri -> %lu Hz (was 48 MHz; frees TFT SPI to 62.5 MHz)",
+        (unsigned long)clock_get_hz(clk_peri));
+  }
 #endif
   deb("[boot] flash: xip=0x%08lx size=0x%08lx end=0x%08lx",
       (unsigned long)DOOM_FLASH_XIP_BASE, (unsigned long)DOOM_FLASH_SIZE_BYTES,
@@ -359,7 +316,7 @@ void app_start(void) {
     deb("[boot] TFT actual=%dx%d", hal_display_get_width(),
         hal_display_get_height());
   }
-  DoomBootLog_Printf("DOOM [boot] reset summary post-TFT: reason=%s "
+  deb("DOOM [boot] reset summary post-TFT: reason=%s "
                      "watchdog=%d brownout=%d free_heap=%lu stack_guard=%d\n",
                      hal_reset_reason_str(reset_reason),
                      hal_watchdog_caused_reboot() ? 1 : 0,
@@ -394,7 +351,6 @@ void app_start(void) {
 void app_task0(void) {
   hal_alive_mark();
   hal_debug_loop();
-  DoomBootLog_Flush();
 
   const uint32_t now = hal_millis();
 
@@ -449,5 +405,5 @@ void app_task1(void) {
   }
 
   pd_core1_loop();
-  hal_delay_ms(1u);
+  hal_delay_us(10u);
 }

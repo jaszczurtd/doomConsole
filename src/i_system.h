@@ -21,6 +21,9 @@
 #ifndef __I_SYSTEM__
 #define __I_SYSTEM__
 
+#include <JaszczurHAL.h>
+#include <utils/tools_api.h>
+
 #include "d_ticcmd.h"
 #include "d_event.h"
 
@@ -61,8 +64,7 @@ extern uint8_t *exit_screen_kb_buffer_80;
 #if !NO_IERROR || !PICO_ON_DEVICE
 void I_Error (const char *error, ...) NORETURN PRINTF_ATTR(1, 2);
 #elif JASZCZURHAL_PORT
-#include "jaszczurhal/doom_boot_log.h"
-#define I_Error(args...) DoomFatalError(args)
+#define I_Error(args...) derr(args)
 #else
 #include "pico.h"
 //#define I_Error(args...) ((void)0)

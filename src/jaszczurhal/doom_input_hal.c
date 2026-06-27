@@ -15,46 +15,7 @@
 #include "doomkeys.h"
 #include "doomtype.h"
 #include "i_input.h"
-
-#ifndef DOOM_INPUT_ACTIVE_LOW
-#define DOOM_INPUT_ACTIVE_LOW 1
-#endif
-
-#ifndef DOOM_INPUT_PIN_UP
-#define DOOM_INPUT_PIN_UP 2
-#endif
-
-#ifndef DOOM_INPUT_PIN_DOWN
-#define DOOM_INPUT_PIN_DOWN 3
-#endif
-
-#ifndef DOOM_INPUT_PIN_LEFT
-#define DOOM_INPUT_PIN_LEFT 4
-#endif
-
-#ifndef DOOM_INPUT_PIN_RIGHT
-#define DOOM_INPUT_PIN_RIGHT 5
-#endif
-
-#ifndef DOOM_INPUT_PIN_FIRE
-#define DOOM_INPUT_PIN_FIRE 7
-#endif
-
-#ifndef DOOM_INPUT_PIN_USE
-#define DOOM_INPUT_PIN_USE 8
-#endif
-
-#ifndef DOOM_INPUT_PIN_MENU
-#define DOOM_INPUT_PIN_MENU 9
-#endif
-
-#ifndef DOOM_INPUT_PIN_ACCEPT
-#define DOOM_INPUT_PIN_ACCEPT 10
-#endif
-
-#ifndef DOOM_INPUT_PIN_BACK
-#define DOOM_INPUT_PIN_BACK 11
-#endif
+#include "doom_main_config.h"
 
 typedef struct {
     uint8_t pin;

@@ -23,7 +23,9 @@
 
 #include "deh_defs.h"
 #include "deh_main.h"
+#if !NO_USE_DEH
 #include "deh_mapping.h"
+#endif
 
 #include "info.h"
 

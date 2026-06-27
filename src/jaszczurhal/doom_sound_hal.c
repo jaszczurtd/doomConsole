@@ -29,7 +29,7 @@
 #include "deh_str.h"
 #include "doom/sounds.h"
 #include "doomtype.h"
-#include "i_picosound.h"
+#include "doom_sound_hal.h"
 #include "i_sound.h"
 #include "m_misc.h"
 #include "w_wad.h"

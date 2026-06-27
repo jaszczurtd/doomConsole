@@ -17,6 +17,7 @@
 //     Main loop code.
 //
 
+#include <JaszczurHAL.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -44,7 +45,7 @@
 #include "pico/time.h"
 #include "hardware/gpio.h"
 #if USE_PICO_NET
-#include "piconet.h"
+#include "doom_piconet_compat.h"
 #include "doom/m_menu.h"
 #endif
 CU_REGISTER_DEBUG_PINS(tics)

@@ -9,6 +9,7 @@ set(ARDUINO_SKETCHBOOK "" CACHE PATH "Arduino sketchbook path")
 set(ARDUINO_UPLOAD_PORT "" CACHE STRING "Arduino upload port")
 set(ARDUINO_VERBOSE OFF CACHE BOOL "Enable verbose Arduino CLI output")
 set(DOOM_BOOT_PROBE_ONLY OFF CACHE BOOL "Build a minimal app_start/app_task0 smoke-test firmware")
+set(DOOM_DUAL_CORE_COLUMNS "0" CACHE STRING "Enable queued wall-column rendering path for staged dual-core work")
 set(ARDUINO_RP2040_PLATFORM_PATH "$ENV{HOME}/.arduino15/packages/rp2040/hardware/rp2040/5.4.0" CACHE PATH "Arduino-Pico platform path")
 set(ARDUINO_TINYUSB_SRC "${ARDUINO_RP2040_PLATFORM_PATH}/libraries/Adafruit_TinyUSB_Arduino/src" CACHE PATH "Adafruit TinyUSB source include path")
 set(JH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../libraries/JaszczurHAL" CACHE PATH "JaszczurHAL library root")
@@ -90,6 +91,12 @@ file(CREATE_LINK
     "${SKETCH_DIR}/hal_project_config.h"
     SYMBOLIC COPY_ON_ERROR
 )
+file(REMOVE "${SKETCH_DIR}/doom_main_config.h")
+file(CREATE_LINK
+    "${CMAKE_CURRENT_SOURCE_DIR}/doom_main_config.h"
+    "${SKETCH_DIR}/doom_main_config.h"
+    SYMBOLIC COPY_ON_ERROR
+)
 
 if(DOOM_BOOT_PROBE_ONLY)
     set(DOOM_PORT_SOURCES
@@ -103,7 +110,6 @@ else()
     set(DOOM_PORT_SOURCES
         src/jaszczurhal/doom_app.cpp
         src/jaszczurhal/doom_backend_stub.c
-        src/jaszczurhal/doom_boot_log.cpp
         src/jaszczurhal/doom_input_hal.c
         src/jaszczurhal/doom_storage_hal.c
         src/jaszczurhal/doom_string_hal.c
@@ -140,9 +146,9 @@ else()
         src/w_wad.c
         src/z_zone.c
 
-        src/pico/i_glob.c
-        src/pico/i_picosound.c
-        src/pico/i_system.c
+        src/jaszczurhal/doom_glob_hal.c
+        src/jaszczurhal/doom_sound_hal.c
+        src/jaszczurhal/doom_system_hal.c
     )
 
     foreach(_src IN LISTS DOOM_GAME_SOURCES)
@@ -166,6 +172,10 @@ else()
     set(DOOM_BOOT_PROBE_DEFINE DOOM_BOOT_PROBE_ONLY=0)
 endif()
 
+if(NOT DOOM_DUAL_CORE_COLUMNS MATCHES "^[01]$")
+    message(FATAL_ERROR "DOOM_DUAL_CORE_COLUMNS must be 0 or 1")
+endif()
+
 set(DOOM_PORT_DEFINES
     ${DOOM_BOOT_PROBE_DEFINE}
     DOOM_ONLY=1
@@ -178,10 +188,14 @@ set(DOOM_PORT_DEFINES
     JASZCZURHAL_PORT=1
     JASZCZURHAL_ZONE_BYTES=65536
     JASZCZURHAL_ZONE_MIN_BYTES=49152
-    DOOM_SPRITE_OCCLUSION=1
+    DOOM_RENDER_ASYNC_PLANES=0
+    DOOM_VIDEO_SYNC_FLUSH=0
+    DOOM_DUAL_CORE_COLUMNS=${DOOM_DUAL_CORE_COLUMNS}
+    DOOM_SPRITE_OCCLUSION=0
+    JH_ILI9341_SPI_DEFAULT_HZ=50000000
     SHRINK_MOBJ=1
     FIXED_SCREENWIDTH=1
-    FLOOR_CEILING_CLIP_8BIT=1
+    FLOOR_CEILING_CLIP_8BIT=0
     LOAD_COMPRESSED=1
     MUSX_COMPRESSED=1
     NO_DEMO_RECORDING=1
@@ -189,7 +203,7 @@ set(DOOM_PORT_DEFINES
     NO_DRAW_MASKED=1
     NO_DRAW_MID=1
     NO_DRAW_PSPRITES=1
-    NO_DRAWSEGS=1
+    NO_DRAWSEGS=0
     NO_DRAW_SKY=1
     NO_DRAW_SPRITES=0
     NO_DRAW_TOP=1
@@ -278,8 +292,7 @@ set(DOOM_PORT_INCLUDE_FLAGS
     "-I${GENERATED_DIR}"
     "-I${CMAKE_CURRENT_SOURCE_DIR}/src"
     "-I${CMAKE_CURRENT_SOURCE_DIR}/src/doom"
-    "-I${CMAKE_CURRENT_SOURCE_DIR}/src/pico"
-    "-I${CMAKE_CURRENT_SOURCE_DIR}/opl"
+    "-I${CMAKE_CURRENT_SOURCE_DIR}/src/jaszczurhal"
     "-I${CMAKE_CURRENT_SOURCE_DIR}/src/adpcm-xq"
 )
 

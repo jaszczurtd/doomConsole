@@ -2638,7 +2638,7 @@ void P_UnArchiveSpecials (void)
 
 #if PICO_ON_DEVICE && !JASZCZURHAL_PORT
 #include "w_wad.h"
-#include "picoflash.h"
+#include "doom_picoflash_compat.h"
 #include "hardware/sync.h"
 #include "hardware/address_mapped.h"
 #include "hardware/timer.h"

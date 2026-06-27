@@ -26,9 +26,9 @@
 
 #include "deh_defs.h"
 #include "deh_main.h"
-#include "deh_mapping.h"
 
 #if !NO_USE_DEH
+#include "deh_mapping.h"
 DEH_BEGIN_MAPPING(weapon_mapping, weaponinfo_t)
   DEH_MAPPING("Ammo type",        ammo)
   DEH_MAPPING("Deselect frame",   upstate)

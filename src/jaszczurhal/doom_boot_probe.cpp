@@ -8,53 +8,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#ifndef DOOM_BOOT_PROBE_LED_PIN
-#define DOOM_BOOT_PROBE_LED_PIN 25u
-#endif
-
-#ifndef DOOM_HAL_TFT_SCK_PIN
-#define DOOM_HAL_TFT_SCK_PIN 18u
-#endif
-
-#ifndef DOOM_HAL_TFT_MOSI_PIN
-#define DOOM_HAL_TFT_MOSI_PIN 19u
-#endif
-
-#ifndef DOOM_HAL_TFT_MISO_PIN
-#define DOOM_HAL_TFT_MISO_PIN 16u
-#endif
-
-#ifndef DOOM_HAL_TFT_CS_PIN
-#define DOOM_HAL_TFT_CS_PIN 17u
-#endif
-
-#ifndef DOOM_HAL_TFT_DC_PIN
-#define DOOM_HAL_TFT_DC_PIN 20u
-#endif
-
-#ifndef DOOM_HAL_TFT_RST_PIN
-#define DOOM_HAL_TFT_RST_PIN 21u
-#endif
-
-#ifndef DOOM_HAL_TFT_NATIVE_WIDTH
-#define DOOM_HAL_TFT_NATIVE_WIDTH 240
-#endif
-
-#ifndef DOOM_HAL_TFT_NATIVE_HEIGHT
-#define DOOM_HAL_TFT_NATIVE_HEIGHT 320
-#endif
-
-#ifndef DOOM_HAL_TFT_ROTATION_DEG
-#define DOOM_HAL_TFT_ROTATION_DEG 90
-#endif
-
-#ifndef DOOM_HAL_TFT_INVERT
-#define DOOM_HAL_TFT_INVERT HAL_DISPLAY_INVERT_OFF
-#endif
-
-#ifndef DOOM_HAL_TFT_COLOR_ORDER
-#define DOOM_HAL_TFT_COLOR_ORDER HAL_DISPLAY_COLOR_ORDER_RGB
-#endif
+#include "doom_main_config.h"
 
 static bool s_led_state = false;
 static bool s_display_ready = false;

@@ -28,6 +28,17 @@
 // Visplane related.
 
 #if !NO_DRAWSEGS
+// Bounded for the JaszczurHAL/Pico port: SRAM cannot hold the vanilla
+// SCREENWIDTH*64 opening pool.  Writers must guard against overflow and
+// degrade gracefully (see r_segs.c) instead of overrunning the buffer.
+#ifndef MAXOPENINGS
+#if JASZCZURHAL_PORT
+#define MAXOPENINGS    (SCREENWIDTH*16)
+#else
+#define MAXOPENINGS    (SCREENWIDTH*64)
+#endif
+#endif
+extern  short		openings[MAXOPENINGS];
 extern  short*		lastopening;
 #endif
 
