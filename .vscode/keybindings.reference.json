@@ -1,0 +1,84 @@
+// =====================================================================
+// Build keyboard shortcuts for VS Code
+//
+// Active when editing .ino or C/C++ files.
+//
+// Installation:
+//   Ctrl+K Ctrl+S  -> open keyboard shortcuts editor
+//   Click the {} icon (top-right) -> open keybindings.json
+//   Paste entries below into the [] array.
+// =====================================================================
+[
+    {
+        "key": "ctrl+shift+1",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Build",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+2",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Upload",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+3",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Monitor (persistent)",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+4",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Upload (UF2 / BOOTSEL)",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+5",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Monitor (Debug Probe)",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+6",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Refresh IntelliSense",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+7",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Clean",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+8",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: List ports",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+9",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Change port",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+0",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Install library",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+alt+1",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Select board (GUI)",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    },
+    {
+        "key": "ctrl+shift+alt+2",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build: Select board (interactive)",
+        "when": "resourceExtname == .ino || editorLangId == cpp"
+    }
+]
