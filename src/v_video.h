@@ -84,7 +84,7 @@ extern pre_wipe_state_t pre_wipe_state;
 void V_BeginPatchList(vpatchlist_t *patchlist);
 void V_EndPatchList(void);
 void V_DrawPatchList(const vpatchlist_t *patchlist);
-extern uint8_t vpatch_clip_top, vpatch_clip_bottom;
+extern uint16_t vpatch_clip_top, vpatch_clip_bottom;
 #endif
 void V_DrawPatch(int x, int y, vpatch_handle_large_t patch);
 void V_DrawPatchN(int x, int y, vpatch_handle_large_t patch, int repeat);
@@ -125,6 +125,11 @@ void V_UseBuffer(pixel_t *buffer);
 
 void V_RestoreBuffer(void);
 
+// Override the buffer used by V_RestoreBuffer(). This is only for platform
+// backends that finalize a completed frame while the main renderer has already
+// switched I_VideoBuffer to another framebuffer.
+void V_SetRestoreBufferOverride(pixel_t *buffer);
+
 // Save a screenshot of the current screen to a file, named in the 
 // format described in the string passed to the function, eg.
 // "DOOM%02i.pcx"
@@ -147,4 +152,3 @@ void V_LoadXlaTable(void);
 void V_DrawMouseSpeedBox(int speed);
 
 #endif
-

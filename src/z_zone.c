@@ -94,7 +94,7 @@ static inline void set_memblock_size(memblock_t *mb, int size) {
     mb->size4 = (size + 3) / 4;
 }
 #if PICO_ON_DEVICE
-static_assert(sizeof(memblock_t) == 8, "");
+static_assert(sizeof(memblock_t) == (DOOM_SHORTPTR_FULL_PTR ? 12 : 8), "");
 #endif
 #endif
 static inline shortptr_t memblock_to_shortptr(memblock_t *mb) {
@@ -426,7 +426,11 @@ Z_MallocNoUser
 #if DOOM_SMALL
     assert(size - sizeof(memblock_t) >= 4);
     *(uint32_t *)result = 0; // if this is a thinker_t we have zeroed out the
-#if !PICO_ON_DEVICE
+#if PICO_ON_DEVICE && DOOM_SHORTPTR_FULL_PTR
+    if (size - sizeof(memblock_t) >= 8) {
+        ((uint32_t *)result)[1] = 0; // RP2350 thinker_t stores pool_info past the first word.
+    }
+#elif !PICO_ON_DEVICE
     if (size - sizeof(memblock_t) >= 12) {
         ((uint32_t *)result)[1] = 0; // if this is a thinker_t we have zeroed out the pool_info field
         ((uint32_t *)result)[2] = 0; // if this is a thinker_t we have zeroed out the pool_info field

@@ -84,7 +84,7 @@ typedef struct thinker_s
 
 #if DOOM_SMALL
 #if PICO_ON_DEVICE
-static_assert(sizeof(thinker_t) == 4, ""); // note z_zone requires this too to zero out
+static_assert(sizeof(thinker_t) == (DOOM_SHORTPTR_FULL_PTR ? 8 : 4), ""); // note z_zone requires this too to zero out
 #endif
 #endif
 #define thinker_next(t) ((thinker_t *)shortptr_to_ptr((t)->sp_next))

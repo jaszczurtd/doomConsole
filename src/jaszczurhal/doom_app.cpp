@@ -23,9 +23,14 @@
 #include <hardware/vreg.h>
 #define DOOM_HAVE_PICO_VREG 1
 #endif
+#if __has_include(<pico/cyw43_driver.h>)
+#include <pico/cyw43_driver.h>
+#define DOOM_HAVE_PICO_CYW43_DRIVER 1
+#endif
 
 #include "i_main.h"
 #include "doom_main_config.h"
+#include "doom/doomstat.h"
 #include "jaszczurhal/doom_storage_hal.h"
 #include "picodoom.h"
 
@@ -43,6 +48,24 @@ static uint32_t s_last_blink_ms = 0;
 static uint32_t s_boot_ready_ms = 0;
 static uint32_t s_last_diag_ms = 0;
 static uint32_t s_last_flash_scan_ms = 0;
+static uint32_t s_led_damage_until_ms = 0;
+static int s_last_damage_count = 0;
+
+#ifndef DOOM_LED_DAMAGE_FLASH_MS
+#define DOOM_LED_DAMAGE_FLASH_MS 140u
+#endif
+
+static void boot_adjust_cyw43_clock_for_sys_clock(void) {
+#if defined(PICO_CYW43_SUPPORTED) && defined(DOOM_HAVE_PICO_CYW43_DRIVER) && \
+    defined(DOOM_HAVE_PICO_CLOCKS) && CYW43_PIO_CLOCK_DIV_DYNAMIC
+  const uint32_t sys_hz = clock_get_hz(clk_sys);
+  if (sys_hz >= 250000000u) {
+    cyw43_set_pio_clock_divisor(4u, 0u);
+    deb("[boot] CYW43 PIO clkdiv -> 4.0 for clk_sys=%lu Hz",
+        (unsigned long)sys_hz);
+  }
+#endif
+}
 
 static bool whd_payload_magic_ok(const uint8_t *base) {
 #if WHD_SUPER_TINY
@@ -211,6 +234,34 @@ static void boot_blink(void) {
   hal_gpio_write((uint8_t)DOOM_BOOT_LED_PIN, s_led_state);
 }
 
+static void led_set(bool on) {
+  if (s_led_state == on) {
+    return;
+  }
+
+  s_led_state = on;
+  hal_gpio_write((uint8_t)DOOM_BOOT_LED_PIN, on);
+}
+
+static void led_update_damage_flash(void) {
+  if (consoleplayer < 0 || consoleplayer >= MAXPLAYERS ||
+      !playeringame[consoleplayer]) {
+    led_set(false);
+    s_last_damage_count = 0;
+    s_led_damage_until_ms = 0;
+    return;
+  }
+
+  const int damage_count = players[consoleplayer].damagecount;
+  const uint32_t now = hal_millis();
+  if (damage_count > s_last_damage_count) {
+    s_led_damage_until_ms = now + DOOM_LED_DAMAGE_FLASH_MS;
+  }
+  s_last_damage_count = damage_count;
+
+  led_set((int32_t)(s_led_damage_until_ms - now) > 0);
+}
+
 static void boot_log_blocked_status(uint32_t now) {
   const uint8_t *const whd_base = DoomStorage_WHDBase();
   char first4[16] = {};
@@ -291,6 +342,7 @@ void app_start(void) {
         (unsigned long)clock_get_hz(clk_sys), (unsigned int)DOOM_SYS_CLOCK_KHZ);
   }
 #endif
+  boot_adjust_cyw43_clock_for_sys_clock();
 
 #ifdef DOOM_HAVE_PICO_CLOCKS
   // Move clk_peri from PLL_USB (48 MHz) to PLL_SYS so the TFT SPI bus is no
@@ -302,10 +354,13 @@ void app_start(void) {
     clock_configure(clk_peri, 0,
                     CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
                     sys_hz, sys_hz);
-    deb("[boot] clk_peri -> %lu Hz (was 48 MHz); TFT SPI request=%lu Hz -> "
-        "actual<=clk_peri/even_div",
-        (unsigned long)clock_get_hz(clk_peri),
-        (unsigned long)JH_ILI9341_SPI_DEFAULT_HZ);
+    const uint32_t peri_hz = clock_get_hz(clk_peri);
+    deb("[boot] clk_peri -> %lu Hz (was 48 MHz); TFT SPI request=%lu Hz "
+        "estimated_actual=%lu Hz",
+        (unsigned long)peri_hz,
+        (unsigned long)DOOM_TFT_SPI_REQUEST_HZ,
+        (unsigned long)DoomEstimateRp2040SpiActualHz(
+            peri_hz, DOOM_TFT_SPI_REQUEST_HZ));
   }
 #endif
   deb("[boot] flash: xip=0x%08lx size=0x%08lx end=0x%08lx",
@@ -422,6 +477,9 @@ void app_task0(void) {
     }
 
     s_doom_started = true;
+    s_last_damage_count = 0;
+    s_led_damage_until_ms = 0;
+    led_set(false);
     deb("[boot] entering I_DoomMain");
     hal_delay_ms(100u);
     (void)I_DoomMain(0, nullptr);
@@ -436,6 +494,7 @@ void app_task1(void) {
     return;
   }
 
+  led_update_damage_flash();
   pd_core1_loop();
   hal_delay_us(10u);
 }

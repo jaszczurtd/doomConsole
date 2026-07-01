@@ -51,7 +51,7 @@ extern planefunction_t	ceilingfunc_t;
 extern floor_ceiling_clip_t floorclip[SCREENWIDTH];
 extern floor_ceiling_clip_t ceilingclip[SCREENWIDTH];
 
-#if !DOOM_TINY
+#if !DOOM_TINY || DOOM_HIGHRES_SCENE
 extern fixed_t		yslope[SCREENHEIGHT];
 #else
 extern fixed_t		yslope[MAIN_VIEWHEIGHT];

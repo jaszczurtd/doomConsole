@@ -40,7 +40,7 @@ DEFAULT_FREQ=""        # empty = use board default (133MHz RP2040, 150MHz RP2350
 DEFAULT_OPT="Small"    # Small, Optimize, Optimize2, Optimize3, Debug
 DEFAULT_DBGPORT="Disabled"  # Disabled, Serial, Serial1, Serial2
 DEFAULT_DBGLVL="None"       # None, Core, SPI, Wire, All, NDEBUG
-DEFAULT_USBSTACK="picosdk"  # picosdk, tinyusb, nousb
+DEFAULT_USBSTACK="tinyusb"  # picosdk, tinyusb, nousb
 DEFAULT_IPSTACK="ipv4only"  # ipv4only, ipv4ipv6
 
 default_flash_option_for_chip() {
@@ -52,15 +52,38 @@ default_flash_option_for_chip() {
     fi
 }
 
+fqbn_has_option() {
+    local fqbn="$1"
+    local key="$2"
+    [[ "$fqbn" == *":$key="* || "$fqbn" == *",$key="* ]]
+}
+
+fqbn_append_option_if_missing() {
+    local fqbn="$1"
+    local key="$2"
+    local value="$3"
+
+    if fqbn_has_option "$fqbn" "$key"; then
+        echo "$fqbn"
+    elif [[ "$fqbn" == *:*:*:* ]]; then
+        echo "${fqbn},${key}=${value}"
+    else
+        echo "${fqbn}:${key}=${value}"
+    fi
+}
+
 apply_project_default_flash_if_missing() {
     local fqbn="$1"
     local chip="$2"
+    local out
 
     if [[ "$fqbn" == *":flash="* ]]; then
-        echo "$fqbn"
+        out="$fqbn"
     else
-        echo "${fqbn}:$(default_flash_option_for_chip "$chip")"
+        out="${fqbn}:$(default_flash_option_for_chip "$chip")"
     fi
+
+    fqbn_append_option_if_missing "$out" "usbstack" "$DEFAULT_USBSTACK"
 }
 
 # ---------------------------------------------------------------------------
@@ -163,14 +186,15 @@ ask_advanced_options() {
     # --- USB Stack ---
     echo "" >&2
     echo -e "  ${BOLD}USB Stack:${NC}" >&2
-    echo "    1) Pico SDK USB [default]" >&2
-    echo "    2) Adafruit TinyUSB" >&2
+    echo "    1) Adafruit TinyUSB [project default]" >&2
+    echo "    2) Pico SDK USB" >&2
     echo "    3) No USB" >&2
-    echo "    Enter) Keep default" >&2
+    echo "    Enter) Keep project default" >&2
     read -rp "    Choice: " usb_choice
 
     case "$usb_choice" in
-        2) extra_options="${extra_options:+$extra_options,}usbstack=tinyusb" ;;
+        ""|1) extra_options="${extra_options:+$extra_options,}usbstack=tinyusb" ;;
+        2) extra_options="${extra_options:+$extra_options,}usbstack=picosdk" ;;
         3) extra_options="${extra_options:+$extra_options,}usbstack=nousb" ;;
         *) ;;
     esac
@@ -244,24 +268,29 @@ ask_advanced_options() {
 update_settings() {
     local fqbn="$1"
     local board_desc="$2"
+    local chip="${3:-}"
 
     mkdir -p "$(dirname "$SETTINGS_FILE")"
 
     if [[ -f "$SETTINGS_FILE" ]]; then
         # Pass values via environment variables for safe quoting
-        FQBN_VAL="$fqbn" DESC_VAL="$board_desc" SFILE="$SETTINGS_FILE" \
+        FQBN_VAL="$fqbn" DESC_VAL="$board_desc" CHIP_VAL="$chip" \
+        SFILE="$SETTINGS_FILE" \
         python3 << 'PYEOF'
 import json, os
 
 settings_file = os.environ["SFILE"]
 fqbn = os.environ["FQBN_VAL"]
 desc = os.environ["DESC_VAL"]
+chip = os.environ.get("CHIP_VAL", "")
 
 with open(settings_file, "r") as f:
     settings = json.load(f)
 
 settings["arduino.fqbn"] = fqbn
 settings["arduino.boardDescription"] = desc
+if chip in ("RP2040", "RP2350"):
+    settings["doom.dualCoreColumns"] = False
 
 with open(settings_file, "w") as f:
     json.dump(settings, f, indent=4)
@@ -278,6 +307,9 @@ PYEOF
     echo ""
     echo -e "  ${GREEN}✓${NC} Board set: ${BOLD}${board_desc}${NC}"
     echo -e "  ${GREEN}✓${NC} FQBN: ${fqbn}"
+    if [[ "$chip" == "RP2040" || "$chip" == "RP2350" ]]; then
+        echo -e "  ${GREEN}✓${NC} Dual-core columns: disabled"
+    fi
     echo ""
     echo -e "  ${YELLOW}Next step:${NC} run ${CYAN}./scripts/refresh-intellisense.sh${NC}"
     echo "  to refresh IntelliSense configuration for the new board."
@@ -297,7 +329,7 @@ main() {
                 if [[ "$id" == "$choice" ]]; then
                     local full_fqbn
                     full_fqbn=$(ask_advanced_options "$fqbn" "$chip")
-                    update_settings "$full_fqbn" "$desc"
+                    update_settings "$full_fqbn" "$desc" "$chip"
                     break
                 fi
             done
@@ -306,7 +338,13 @@ main() {
             echo ""
             read -rp "  Enter full FQBN (e.g. rp2040:rp2040:rpipico): " custom_fqbn
             read -rp "  Enter board description: " custom_desc
-            update_settings "$custom_fqbn" "$custom_desc"
+            local custom_chip=""
+            if [[ "$custom_fqbn" == *pico2* || "$custom_fqbn" == *rp2350* ]]; then
+                custom_chip="RP2350"
+            elif [[ "$custom_fqbn" == *rp2040* || "$custom_fqbn" == *pico* ]]; then
+                custom_chip="RP2040"
+            fi
+            update_settings "$custom_fqbn" "$custom_desc" "$custom_chip"
             ;;
         q|Q)
             echo "  Cancelled."

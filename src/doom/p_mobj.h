@@ -417,8 +417,13 @@ static inline angle_t mobj_angle(mobj_t *mobj) {
 #include "pico.h"
 #include <assert.h>
 #if PICO_ON_DEVICE
+#if DOOM_SHORTPTR_FULL_PTR
+static_assert(sizeof(mobj_t)==0x28, "");
+static_assert(sizeof(mobjfull_t)==0x60, "");
+#else
 static_assert(sizeof(mobj_t)==0x20, "");
 static_assert(sizeof(mobjfull_t)==0x54, "");
+#endif
 #else
 static_assert(sizeof(mobj_t)==0x38, "");
 #endif

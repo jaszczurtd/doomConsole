@@ -549,7 +549,7 @@ void R_DrawMaskedColumn(maskedcolumn_t column) {
         assert(column.col >=0 && column.col < patch_width(patch));
         dc_source = column;
 #define MAX_SEGS 64
-        uint8_t ysegs[MAX_SEGS*3];
+        pd_masked_segment_t ysegs[MAX_SEGS];
         int seg_count = 0;
         int height = patch_height(patch);
         if (patch_fully_opaque(patch)) {
@@ -573,9 +573,9 @@ void R_DrawMaskedColumn(maskedcolumn_t column) {
 #endif
 
             if (yl <= yh) {
-                ysegs[0] = yl;
-                ysegs[1] = yh;
-                ysegs[2] = 0;
+                ysegs[0].yl = (uint16_t)yl;
+                ysegs[0].yh = (uint16_t)yh;
+                ysegs[0].source_y = 0;
                 seg_count++;
             }
         } else {
@@ -641,26 +641,23 @@ void R_DrawMaskedColumn(maskedcolumn_t column) {
 
                     if (yl > last) {
 #if JASZCZURHAL_PORT
-                        // Bounds guard: never write past ysegs[].  Dropping
-                        // excess posts is far better than the stack corruption
-                        // that produced black sprite glitches.  base_offset is
-                        // also clamped so the uint8_t store cannot wrap.
-                        if (seg_count >= MAX_SEGS || base_offset >= 256) {
+                        // Bounds guard: never write past ysegs[]. Dropping
+                        // excess posts is far better than stack corruption.
+                        if (seg_count >= MAX_SEGS) {
                             DoomSpriteDiag_Inc(&doom_sprite_seg_overflow);
                         } else {
-                            ysegs[seg_count*3] = yl;
-                            ysegs[seg_count*3+1] = yh;
-                            ysegs[seg_count*3+2] = base_offset;
+                            ysegs[seg_count].yl = (uint16_t)yl;
+                            ysegs[seg_count].yh = (uint16_t)yh;
+                            ysegs[seg_count].source_y = (uint16_t)base_offset;
                             seg_count++;
                             if (seg_count > doom_sprite_seg_max) {
                                 doom_sprite_seg_max = (uint8_t)seg_count;
                             }
                         }
 #else
-                        ysegs[seg_count*3] = yl;
-                        ysegs[seg_count*3+1] = yh;
-                        assert(base_offset < 256);
-                        ysegs[seg_count*3+2] = base_offset;
+                        ysegs[seg_count].yl = (uint16_t)yl;
+                        ysegs[seg_count].yh = (uint16_t)yh;
+                        ysegs[seg_count].source_y = (uint16_t)base_offset;
                         seg_count++;
 #endif
                     }
@@ -979,6 +976,8 @@ void R_DrawPSprite(pspdef_t *psp) {
     boolean flip;
     vissprite_t *vis;
     vissprite_t avis;
+    fixed_t psprite_sx;
+    fixed_t psprite_sy;
 
     // decide which patch to use
 #ifdef RANGECHECK
@@ -995,8 +994,15 @@ void R_DrawPSprite(pspdef_t *psp) {
     lump = spriteframe_unrotated_pic(sprframe);
     flip = (boolean) spriteframe_unrotated_flipped(sprframe);
 
+    psprite_sx = psp->sx;
+    psprite_sy = psp->sy;
+#if DOOM_HIGHRES_SCENE
+    psprite_sx += ((SCREENWIDTH - 320) / 2) * FRACUNIT;
+    psprite_sy += (SCREENHEIGHT - 200) * FRACUNIT;
+#endif
+
     // calculate edges of the shape
-    tx = psp->sx - (SCREENWIDTH / 2) * FRACUNIT;
+    tx = psprite_sx - (SCREENWIDTH / 2) * FRACUNIT;
 
     tx -= sprite_offset(lump);
     x1 = (centerxfrac + FixedMul(tx, pspritescale)) >> FRACBITS;
@@ -1015,7 +1021,7 @@ void R_DrawPSprite(pspdef_t *psp) {
     // store information in a vissprite
     vis = &avis;
     vis->mobjflags = 0;
-    vis->texturemid = (BASEYCENTER << FRACBITS) + FRACUNIT / 2 - (psp->sy - sprite_topoffset(lump));
+    vis->texturemid = (BASEYCENTER << FRACBITS) + FRACUNIT / 2 - (psprite_sy - sprite_topoffset(lump));
     vis->x1 = x1 < 0 ? 0 : x1;
     vis->x2 = x2 >= viewwidth ? viewwidth - 1 : x2;
     vis->scale = pspritescale << detailshift;

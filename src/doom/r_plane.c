@@ -91,7 +91,7 @@ int8_t *planezlight;
 #endif
 fixed_t planeheight;
 
-#if !DOOM_TINY
+#if !DOOM_TINY || DOOM_HIGHRES_SCENE
 fixed_t yslope[SCREENHEIGHT];
 #else
 fixed_t yslope[MAIN_VIEWHEIGHT];

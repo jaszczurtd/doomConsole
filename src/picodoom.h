@@ -18,12 +18,18 @@ typedef enum {
     PDCOL_CEILING,
 } pd_column_type;
 
+typedef struct {
+    uint16_t yl;
+    uint16_t yh;
+    uint16_t source_y;
+} pd_masked_segment_t;
+
 extern volatile uint8_t interp_in_use;
 void pd_init();
 void pd_core1_loop();
 void pd_begin_frame();
 void pd_add_column(pd_column_type type);
-void pd_add_masked_columns(uint8_t *ys, int seg_count);
+void pd_add_masked_columns(const pd_masked_segment_t *segments, int seg_count);
 void pd_add_plane_column(int x, int yl, int yh, fixed_t scale, int floor, int fd_num);
 void pd_end_frame(int wipe_start);
 uint8_t *pd_get_work_area(uint32_t *size);

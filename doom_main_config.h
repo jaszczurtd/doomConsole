@@ -11,7 +11,11 @@
 
 /* Boot/probe */
 #ifndef DOOM_BOOT_LED_PIN
+#ifdef HAL_LED_BUILTIN
+#define DOOM_BOOT_LED_PIN HAL_LED_BUILTIN
+#else
 #define DOOM_BOOT_LED_PIN 25u
+#endif
 #endif
 
 #ifndef DOOM_BOOT_PROBE_LED_PIN
@@ -64,6 +68,14 @@
 #endif
 
 /* TFT/display */
+#if defined(DOOM_TFT_PANEL_ST7796S) && !PICO_RP2350
+#error "DOOM_TFT_PANEL_ST7796S is supported only on RP2350 builds."
+#endif
+
+#if DOOM_HIGHRES_SCENE && defined(DOOM_TFT_PANEL_ST7796S) && !PICO_RP2350
+#error "DOOM_HIGHRES_SCENE with ST7796S is supported only on RP2350 builds."
+#endif
+
 #ifndef DOOM_HAL_TFT_SCK_PIN
 #define DOOM_HAL_TFT_SCK_PIN 18u
 #endif
@@ -89,11 +101,19 @@
 #endif
 
 #ifndef DOOM_HAL_TFT_NATIVE_WIDTH
+#if defined(DOOM_TFT_PANEL_ST7796S)
+#define DOOM_HAL_TFT_NATIVE_WIDTH 320
+#else
 #define DOOM_HAL_TFT_NATIVE_WIDTH 240
+#endif
 #endif
 
 #ifndef DOOM_HAL_TFT_NATIVE_HEIGHT
+#if defined(DOOM_TFT_PANEL_ST7796S)
+#define DOOM_HAL_TFT_NATIVE_HEIGHT 480
+#else
 #define DOOM_HAL_TFT_NATIVE_HEIGHT 320
+#endif
 #endif
 
 // Logical display rotation passed to the HAL display driver.
@@ -108,7 +128,11 @@
 
 // RGB/BGR order expected by the physical panel.
 #ifndef DOOM_HAL_TFT_COLOR_ORDER
+#if defined(DOOM_TFT_PANEL_ST7796S)
+#define DOOM_HAL_TFT_COLOR_ORDER HAL_DISPLAY_COLOR_ORDER_BGR
+#else
 #define DOOM_HAL_TFT_COLOR_ORDER HAL_DISPLAY_COLOR_ORDER_RGB
+#endif
 #endif
 
 // Diagnostic mode: 1 forces synchronous TFT flush on core0 instead of async core1.
@@ -116,10 +140,72 @@
 #define DOOM_VIDEO_SYNC_FLUSH 0
 #endif
 
+// Draw the final Doom overlay/HUD pass on core1. The first implementation keeps
+// a barrier before the next game tick so UI/global state is not read while core0
+// mutates it.
+#ifndef DOOM_RENDER_ASYNC_HUD
+#if PICO_RP2350
+#define DOOM_RENDER_ASYNC_HUD 1
+#else
+#define DOOM_RENDER_ASYNC_HUD 0
+#endif
+#endif
+
+// Keep a second indexed framebuffer in the 320x200/240 RP2350 path so core0 can
+// render frame N+1 while core1 streams frame N to the TFT. Full-panel scene
+// modes use that RAM for the larger framebuffer instead.
+#ifndef DOOM_VIDEO_DOUBLE_BUFFER
+#if PICO_RP2350 && (!DOOM_HIGHRES_SCENE || defined(DOOM_TFT_PANEL_ILI9341))
+#define DOOM_VIDEO_DOUBLE_BUFFER 1
+#else
+#define DOOM_VIDEO_DOUBLE_BUFFER 0
+#endif
+#endif
+
 // Number of framebuffer lines converted and flushed per TFT transfer chunk.
 #ifndef DOOM_FLUSH_LINES
+#if DOOM_HIGHRES_SCENE
+#define DOOM_FLUSH_LINES 16
+#else
 #define DOOM_FLUSH_LINES 8
 #endif
+#endif
+
+#ifndef DOOM_FLUSH_PIPELINE_BUFFERS
+#if DOOM_HIGHRES_SCENE && PICO_RP2350
+#define DOOM_FLUSH_PIPELINE_BUFFERS 2
+#else
+#define DOOM_FLUSH_PIPELINE_BUFFERS 1
+#endif
+#endif
+
+#ifndef DOOM_TFT_SPI_REQUEST_HZ
+#if defined(DOOM_TFT_PANEL_ST7796S)
+#define DOOM_TFT_SPI_REQUEST_HZ JH_ST77XX_SPI_DEFAULT_HZ
+#else
+#define DOOM_TFT_SPI_REQUEST_HZ JH_ILI9341_SPI_DEFAULT_HZ
+#endif
+#endif
+
+static inline uint32_t DoomEstimateRp2040SpiActualHz(uint32_t peri_hz,
+                                                     uint32_t requested_hz)
+{
+    if (peri_hz == 0u || requested_hz == 0u) {
+        return 0u;
+    }
+
+    uint32_t best = 0u;
+    for (uint32_t cpsr = 2u; cpsr <= 254u; cpsr += 2u) {
+        for (uint32_t scr = 0u; scr <= 255u; ++scr) {
+            const uint32_t divisor = cpsr * (scr + 1u);
+            const uint32_t hz = peri_hz / divisor;
+            if (hz <= requested_hz && hz > best) {
+                best = hz;
+            }
+        }
+    }
+    return best;
+}
 
 /* GPIO input */
 // Selects active-low button wiring with internal pull-ups.
@@ -276,7 +362,11 @@
 
 // Hash table size for quick decoded-column cache lookup.
 #ifndef HAL_PATCH_COLUMN_CACHE_HASH_SIZE
+#if PICO_RP2350
+#define HAL_PATCH_COLUMN_CACHE_HASH_SIZE 512u
+#else
 #define HAL_PATCH_COLUMN_CACHE_HASH_SIZE 128u
+#endif
 #endif
 
 // Maximum height kept in the transient tall-column cache.
@@ -286,7 +376,11 @@
 
 // Number of transient tall-column cache slots.
 #ifndef HAL_PATCH_TALL_CACHE_SLOTS
+#if DOOM_HIGHRES_SCENE
+#define HAL_PATCH_TALL_CACHE_SLOTS 24u
+#else
 #define HAL_PATCH_TALL_CACHE_SLOTS 18u
+#endif
 #endif
 
 // Huffman decoder table capacity for flat/plane textures.
@@ -301,7 +395,7 @@
 
 // Enables queued wall-column rendering and the staged core1 column helper.
 #ifndef DOOM_DUAL_CORE_COLUMNS
-#define DOOM_DUAL_CORE_COLUMNS 0
+#define DOOM_DUAL_CORE_COLUMNS 1
 #endif
 
 #if DOOM_DUAL_CORE_COLUMNS
@@ -327,7 +421,11 @@
 #else
 // Decoded compact-column cache slots in the default single-core budget.
 #ifndef HAL_PATCH_COLUMN_CACHE_SLOTS
+#if PICO_RP2350
+#define HAL_PATCH_COLUMN_CACHE_SLOTS 224u
+#else
 #define HAL_PATCH_COLUMN_CACHE_SLOTS 84u
+#endif
 #endif
 // Deferred plane queue capacity in the default single-core budget.
 #ifndef HAL_PLANE_QUEUE_MAX
@@ -352,6 +450,21 @@
 // Framebuffer clear value used to detect undrawn pixels in `black=`.
 #ifndef DOOM_UNDRAWN_SENTINEL
 #define DOOM_UNDRAWN_SENTINEL 0u
+#endif
+
+// Diagnostic framebuffer clear/scan. In highres gameplay the 3D scene should
+// fill the whole framebuffer, so the full-screen clear and black-pixel scan are
+// disabled by default to avoid burning memory bandwidth every frame.
+#ifndef DOOM_RENDER_SENTINEL_CLEAR
+#if DOOM_HIGHRES_SCENE
+#define DOOM_RENDER_SENTINEL_CLEAR 0
+#else
+#define DOOM_RENDER_SENTINEL_CLEAR 1
+#endif
+#endif
+
+#ifndef DOOM_RENDER_BLACK_DIAG
+#define DOOM_RENDER_BLACK_DIAG DOOM_RENDER_SENTINEL_CLEAR
 #endif
 
 // Bounded queue size for deferred wall columns in the dual-core path.

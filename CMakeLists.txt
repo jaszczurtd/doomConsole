@@ -12,6 +12,8 @@ set(DOOM_BOOT_PROBE_ONLY OFF CACHE BOOL "Build a minimal app_start/app_task0 smo
 set(DOOM_DUAL_CORE_COLUMNS "0" CACHE STRING "Enable queued wall-column rendering path for staged dual-core work")
 set(DOOM_RENDER_ASYNC_PLANES "0" CACHE STRING "Render visplanes on core1 concurrently with core0 columns/sprites")
 set(DOOM_VIDEO_SYNC_FLUSH "0" CACHE STRING "Diagnostic: flush the TFT synchronously on core0 instead of async on core1")
+set(DOOM_TFT_PANEL "ili9341" CACHE STRING "TFT panel driver: ili9341 or st7796s (ST7796S is RP2350-only)")
+set(DOOM_HIGHRES_SCENE "0" CACHE STRING "Render the 3D scene at the full TFT panel resolution (ILI9341 320x240, ST7796S 480x320)")
 set(DOOM_SYS_CLOCK_KHZ "250000" CACHE STRING "System clock (kHz) applied at boot; configure-cmake.sh derives it per target (RP2040 250000 / RP2350 300000)")
 set(JH_ILI9341_SPI_DEFAULT_HZ "41666666" CACHE STRING "Requested TFT SPI clock (Hz); actual = clk_peri / even divisor. configure-cmake.sh derives it per target")
 set(ARDUINO_RP2040_PLATFORM_PATH "$ENV{HOME}/.arduino15/packages/rp2040/hardware/rp2040/5.4.0" CACHE PATH "Arduino-Pico platform path")
@@ -182,7 +184,70 @@ foreach(_flag DOOM_DUAL_CORE_COLUMNS DOOM_RENDER_ASYNC_PLANES DOOM_VIDEO_SYNC_FL
     endif()
 endforeach()
 
+if(NOT DOOM_HIGHRES_SCENE MATCHES "^[01]$")
+    message(FATAL_ERROR "DOOM_HIGHRES_SCENE must be 0 or 1 (got '${DOOM_HIGHRES_SCENE}')")
+endif()
+
+string(TOLOWER "${DOOM_TFT_PANEL}" DOOM_TFT_PANEL_NORMALIZED)
+if(NOT DOOM_TFT_PANEL_NORMALIZED MATCHES "^(ili9341|st7796s)$")
+    message(FATAL_ERROR "DOOM_TFT_PANEL must be 'ili9341' or 'st7796s' (got '${DOOM_TFT_PANEL}')")
+endif()
+
+set(DOOM_TARGET_IS_RP2350 OFF)
+if(ARDUINO_FQBN MATCHES "pico2|rp2350")
+    set(DOOM_TARGET_IS_RP2350 ON)
+endif()
+
+set(DOOM_TFT_DEFINES)
+if(DOOM_TFT_PANEL_NORMALIZED STREQUAL "st7796s")
+    if(NOT DOOM_TARGET_IS_RP2350)
+        message(FATAL_ERROR "DOOM_TFT_PANEL=st7796s is supported only for RP2350/Pico 2 builds")
+    endif()
+    list(APPEND DOOM_TFT_DEFINES
+        DOOM_TFT_PANEL_ST7796S=1
+        HAL_ENABLE_ST7796S
+        HAL_DISPLAY_ST7796S
+    )
+else()
+    list(APPEND DOOM_TFT_DEFINES
+        DOOM_TFT_PANEL_ILI9341=1
+        HAL_ENABLE_ILI9341
+        HAL_DISPLAY_ILI9341
+    )
+endif()
+
+set(DOOM_SCREEN_DEFINES)
+if(DOOM_HIGHRES_SCENE STREQUAL "1")
+    if(DOOM_TFT_PANEL_NORMALIZED STREQUAL "st7796s")
+        if(NOT DOOM_TARGET_IS_RP2350)
+            message(FATAL_ERROR "DOOM_HIGHRES_SCENE=1 with ST7796S is supported only for RP2350/Pico 2 builds")
+        endif()
+        list(APPEND DOOM_SCREEN_DEFINES
+            DOOM_HIGHRES_SCENE=1
+            SCREENWIDTH=480
+            SCREENHEIGHT=320
+            FIXED_SCREENWIDTH=0
+        )
+    else()
+        list(APPEND DOOM_SCREEN_DEFINES
+            DOOM_HIGHRES_SCENE=1
+            SCREENWIDTH=320
+            SCREENHEIGHT=240
+            FIXED_SCREENWIDTH=1
+        )
+    endif()
+else()
+    list(APPEND DOOM_SCREEN_DEFINES
+        DOOM_HIGHRES_SCENE=0
+        SCREENWIDTH=320
+        SCREENHEIGHT=200
+        FIXED_SCREENWIDTH=1
+    )
+endif()
+
 set(DOOM_PORT_DEFINES
+    ${DOOM_TFT_DEFINES}
+    ${DOOM_SCREEN_DEFINES}
     ${DOOM_BOOT_PROBE_DEFINE}
     DOOM_ONLY=1
     DOOM_SMALL=1
@@ -200,8 +265,8 @@ set(DOOM_PORT_DEFINES
     DOOM_SYS_CLOCK_KHZ=${DOOM_SYS_CLOCK_KHZ}
     DOOM_SPRITE_OCCLUSION=0
     JH_ILI9341_SPI_DEFAULT_HZ=${JH_ILI9341_SPI_DEFAULT_HZ}
+    JH_ST77XX_SPI_DEFAULT_HZ=${JH_ILI9341_SPI_DEFAULT_HZ}
     SHRINK_MOBJ=1
-    FIXED_SCREENWIDTH=1
     FLOOR_CEILING_CLIP_8BIT=0
     LOAD_COMPRESSED=1
     MUSX_COMPRESSED=1

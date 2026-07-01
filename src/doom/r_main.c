@@ -1011,7 +1011,7 @@ void R_ExecuteSetViewSize(void) {
 
     setsizeneeded = false;
 
-    if (setblocks == 11) {
+    if (setblocks == 11 || DOOM_HIGHRES_SCENE) {
         scaledviewwidth = SCREENWIDTH;
         viewheight = SCREENHEIGHT;
     } else {

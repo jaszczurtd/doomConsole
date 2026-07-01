@@ -1,9 +1,9 @@
 /*
  * JaszczurHAL TFT display backend.
  *
- * Doom still renders into its logical 320x200 indexed framebuffer.  This file
+ * Doom renders into its logical indexed framebuffer.  This file
  * converts one display line at a time to big-endian RGB565 and streams it
- * through the HAL TFT write-window API, centered on a landscape 320x240 TFT.
+ * through the HAL TFT write-window API, centered on the configured TFT.
  */
 
 #include <limits.h>
@@ -60,12 +60,24 @@ int vga_porch_flash = 0;
 int force_software_renderer = 0;
 should_be_const constcharstar window_position = "";
 
+#if DOOM_VIDEO_DOUBLE_BUFFER && !PICO_RP2350
+#error DOOM_VIDEO_DOUBLE_BUFFER is only supported on RP2350 by this port.
+#endif
+
 #if !USE_VANILLA_KEYBOARD_MAPPING_ONLY
 int vanilla_keyboard_mapping = true;
 #endif
 
+#if DOOM_VIDEO_DOUBLE_BUFFER
+static pixel_t s_video_buffers[2][SCREENWIDTH * SCREENHEIGHT];
+static uint8_t s_render_buffer_index = 0;
+#define ACTIVE_VIDEO_BUFFER s_video_buffers[s_render_buffer_index]
+pixel_t *I_VideoBuffer = s_video_buffers[0];
+#else
 static pixel_t s_video_buffer[SCREENWIDTH * SCREENHEIGHT];
-pixel_t *I_VideoBuffer = s_video_buffer;
+#define ACTIVE_VIDEO_BUFFER s_video_buffer
+pixel_t *I_VideoBuffer = ACTIVE_VIDEO_BUFFER;
+#endif
 
 #if DOOM_TINY
 uint8_t next_video_type = VIDEO_TYPE_NONE;
@@ -86,11 +98,13 @@ volatile uint8_t interp_in_use = 0;
 int pd_flag = 0;
 fixed_t pd_scale = FRACUNIT;
 
-static uint16_t s_palette_rgb565[256];
+static uint16_t s_palette_rgb565_be[256];
 static uint8_t s_palette_rgb888[256][3];
 // Convert/transfer several lines per DMA call to amortise the per-call DMA
 // setup + blocking-wait overhead (200 single-line DMAs per frame was costly).
-static uint8_t s_line_rgb565_be[SCREENWIDTH * 2 * DOOM_FLUSH_LINES];
+static uint16_t
+    s_line_rgb565_be[DOOM_FLUSH_PIPELINE_BUFFERS]
+                     [SCREENWIDTH * DOOM_FLUSH_LINES];
 static bool s_palette_ready = false;
 static bool s_display_ready = false;
 static int s_active_palette_num = 0;
@@ -104,6 +118,35 @@ static const pixel_t * volatile s_flush_buffer = NULL;
 static volatile uint32_t s_async_flush_count = 0;
 static volatile uint32_t s_async_wait_count = 0;
 static volatile uint32_t s_async_wait_us = 0;
+
+#if DOOM_RENDER_ASYNC_HUD
+static volatile uint8_t s_hud_pending = 0;
+static volatile uint8_t s_hud_busy = 0;
+static const pixel_t * volatile s_hud_finalize_buffer = NULL;
+static volatile uint32_t s_hud_async_count = 0;
+static volatile uint32_t s_hud_wait_count = 0;
+static volatile uint32_t s_hud_wait_us = 0;
+#endif
+
+#if DOOM_VIDEO_DOUBLE_BUFFER
+static volatile uint32_t s_double_buffer_swap_count = 0;
+static volatile uint32_t s_double_buffer_wait_count = 0;
+static volatile uint32_t s_double_buffer_wait_us = 0;
+
+static void select_render_buffer(uint8_t index)
+{
+    if (index == s_render_buffer_index) {
+        return;
+    }
+
+    s_render_buffer_index = index;
+    I_VideoBuffer = s_video_buffers[s_render_buffer_index];
+    V_RestoreBuffer();
+}
+#endif
+
+static void DoomVideo_DrawFrameOverlay(void);
+static void DoomVideo_DrawGameplayOverlayTo(pixel_t *buffer);
 
 #if USE_WHD
 static vpatchlist_t s_hal_patch_list[HAL_PATCH_LIST_MAX_ENTRIES + 1];
@@ -139,6 +182,11 @@ static uint16_t rgb_to_rgb565(int r, int g, int b)
     return (uint16_t)(((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3));
 }
 
+static uint16_t rgb565_to_be_store_word(uint16_t color)
+{
+    return (uint16_t)((color << 8) | (color >> 8));
+}
+
 static void set_palette_entry(int index, int r, int g, int b, int gamma)
 {
     if (gamma > 0) {
@@ -150,7 +198,7 @@ static void set_palette_entry(int index, int r, int g, int b, int gamma)
     s_palette_rgb888[index][0] = (uint8_t)r;
     s_palette_rgb888[index][1] = (uint8_t)g;
     s_palette_rgb888[index][2] = (uint8_t)b;
-    s_palette_rgb565[index] = rgb_to_rgb565(r, g, b);
+    s_palette_rgb565_be[index] = rgb565_to_be_store_word(rgb_to_rgb565(r, g, b));
 }
 
 static void build_grayscale_palette(int gamma)
@@ -290,8 +338,14 @@ void I_InitGraphics(void)
 {
     deb("[video] I_InitGraphics begin\n");
 
+#if DOOM_VIDEO_DOUBLE_BUFFER
+    memset(s_video_buffers, 0, sizeof(s_video_buffers));
+    s_render_buffer_index = 0;
+#else
     memset(s_video_buffer, 0, sizeof(s_video_buffer));
-    I_VideoBuffer = s_video_buffer;
+#endif
+    I_VideoBuffer = ACTIVE_VIDEO_BUFFER;
+    V_RestoreBuffer();
     s_next_palette_num = 0;
 
     hal_display_init((uint8_t)DOOM_HAL_TFT_CS_PIN, (uint8_t)DOOM_HAL_TFT_DC_PIN,
@@ -313,11 +367,14 @@ void I_InitGraphics(void)
                        s_display_x, s_display_y,
                        s_display_ready ? "OK" : "FAIL");
 #ifdef DOOM_HAVE_PICO_CLOCKS
+    const uint32_t peri_hz = clock_get_hz(clk_peri);
     deb("[video] clk_sys=%lu Hz clk_peri=%lu Hz "
-                       "(TFT SPI requested %lu Hz)\n",
+                       "(TFT SPI requested %lu Hz estimated_actual=%lu Hz)\n",
                        (unsigned long)clock_get_hz(clk_sys),
-                       (unsigned long)clock_get_hz(clk_peri),
-                       (unsigned long)JH_ILI9341_SPI_DEFAULT_HZ);
+                       (unsigned long)peri_hz,
+                       (unsigned long)DOOM_TFT_SPI_REQUEST_HZ,
+                       (unsigned long)DoomEstimateRp2040SpiActualHz(
+                           peri_hz, DOOM_TFT_SPI_REQUEST_HZ));
 #endif
 }
 
@@ -330,7 +387,15 @@ void I_ShutdownGraphics(void)
 
 void I_SetPaletteNum(int num)
 {
-    s_next_palette_num = num < 0 ? 0 : num;
+    const int requested = num < 0 ? 0 : num;
+
+    if (s_palette_ready && s_next_palette_num < 0 &&
+        requested == s_active_palette_num &&
+        current_gamma() == s_palette_gamma) {
+        return;
+    }
+
+    s_next_palette_num = requested;
 }
 
 int I_GetPaletteIndex(int r, int g, int b)
@@ -368,30 +433,54 @@ static void finish_update_buffer(const pixel_t *buffer)
         return;
     }
 
+    unsigned slot = 0u;
+    bool dma_active = false;
     for (int y0 = 0; y0 < SCREENHEIGHT; y0 += DOOM_FLUSH_LINES) {
         int lines = SCREENHEIGHT - y0;
         if (lines > DOOM_FLUSH_LINES) {
             lines = DOOM_FLUSH_LINES;
         }
 
-        uint8_t *dst = s_line_rgb565_be;
+        uint16_t *dst = s_line_rgb565_be[slot];
         for (int ly = 0; ly < lines; ++ly) {
             const pixel_t *src = buffer + (y0 + ly) * SCREENWIDTH;
             for (int x = 0; x < SCREENWIDTH; ++x) {
-                const uint16_t color = s_palette_rgb565[src[x]];
-                *dst++ = (uint8_t)(color >> 8);
-                *dst++ = (uint8_t)color;
+                *dst++ = s_palette_rgb565_be[src[x]];
             }
         }
 
-        if (!hal_display_write_pixels_dma(
-                s_line_rgb565_be,
+#if DOOM_FLUSH_PIPELINE_BUFFERS > 1
+        if (dma_active && !hal_display_write_pixels_dma_async_wait()) {
+            break;
+        }
+        if (!hal_display_write_pixels_dma_async_start(
+                (const uint8_t *)s_line_rgb565_be[slot],
                 (size_t)lines * SCREENWIDTH * 2)) {
             break;
         }
+        dma_active = true;
+        slot = (slot + 1u) % DOOM_FLUSH_PIPELINE_BUFFERS;
+#else
+        if (!hal_display_write_pixels_dma(
+                (const uint8_t *)s_line_rgb565_be[0],
+                (size_t)lines * SCREENWIDTH * 2)) {
+            break;
+        }
+#endif
     }
 
+#if DOOM_FLUSH_PIPELINE_BUFFERS > 1
+    if (dma_active) {
+        (void)hal_display_write_pixels_dma_async_wait();
+    }
+#endif
     (void)hal_display_end_write();
+}
+
+static bool palette_update_pending(void)
+{
+    return !s_palette_ready || s_next_palette_num >= 0 ||
+           current_gamma() != s_palette_gamma;
 }
 
 void DoomVideo_WaitForAsyncFlush(void)
@@ -421,6 +510,60 @@ void DoomVideo_WaitForAsyncFlush(void)
     }
 }
 
+void DoomVideo_BeginRenderFrame(void)
+{
+#if DOOM_VIDEO_DOUBLE_BUFFER
+    const uint32_t wait_start = hal_micros();
+    bool waited = false;
+
+    for (;;) {
+        const pixel_t *flushing = NULL;
+        const pixel_t *finalizing = NULL;
+        bool busy = false;
+
+        hal_critical_section_enter();
+        busy = s_flush_busy != 0u || s_flush_pending != 0u;
+        flushing = s_flush_buffer;
+#if DOOM_RENDER_ASYNC_HUD
+        if (s_hud_pending != 0u || s_hud_busy != 0u) {
+            busy = true;
+            finalizing = s_hud_finalize_buffer;
+        }
+#endif
+        hal_critical_section_exit();
+
+        if (!busy ||
+            (flushing != I_VideoBuffer && finalizing != I_VideoBuffer)) {
+            if (waited) {
+                const uint32_t elapsed = hal_micros() - wait_start;
+
+                hal_critical_section_enter();
+                ++s_double_buffer_wait_count;
+                s_double_buffer_wait_us += elapsed;
+                hal_critical_section_exit();
+            }
+            return;
+        }
+
+        const uint8_t other = (uint8_t)(s_render_buffer_index ^ 1u);
+        if (flushing != s_video_buffers[other] &&
+            finalizing != s_video_buffers[other]) {
+            select_render_buffer(other);
+
+            hal_critical_section_enter();
+            ++s_double_buffer_swap_count;
+            hal_critical_section_exit();
+            return;
+        }
+
+        waited = true;
+        hal_delay_us(50u);
+    }
+#else
+    DoomVideo_WaitForAsyncFlush();
+#endif
+}
+
 void DoomVideo_Core1Poll(void)
 {
     const pixel_t *buffer = NULL;
@@ -432,18 +575,143 @@ void DoomVideo_Core1Poll(void)
     }
     hal_critical_section_exit();
 
-    if (buffer == NULL) {
-        return;
+    if (buffer != NULL) {
+        finish_update_buffer(buffer);
+
+        hal_critical_section_enter();
+        s_flush_buffer = NULL;
+#if DOOM_RENDER_ASYNC_HUD
+        if (s_hud_finalize_buffer == NULL) {
+            s_flush_busy = 0u;
+        }
+#else
+        s_flush_busy = 0u;
+#endif
+        ++s_async_flush_count;
+        hal_critical_section_exit();
     }
 
-    finish_update_buffer(buffer);
+#if DOOM_RENDER_ASYNC_HUD
+    const pixel_t *finalize_buffer = NULL;
 
     hal_critical_section_enter();
-    s_flush_buffer = NULL;
-    s_flush_busy = 0u;
-    ++s_async_flush_count;
+    if (s_hud_pending != 0u) {
+        finalize_buffer = s_hud_finalize_buffer;
+        s_hud_pending = 0u;
+        s_hud_busy = 1u;
+    }
+    hal_critical_section_exit();
+
+    if (finalize_buffer == NULL && s_hud_busy != 0u) {
+        DoomVideo_DrawFrameOverlay();
+
+        hal_critical_section_enter();
+        s_hud_busy = 0u;
+        ++s_hud_async_count;
+        hal_critical_section_exit();
+    } else if (finalize_buffer != NULL) {
+        DoomVideo_DrawGameplayOverlayTo((pixel_t *)finalize_buffer);
+
+        hal_critical_section_enter();
+        s_flush_buffer = finalize_buffer;
+        hal_critical_section_exit();
+
+        finish_update_buffer(finalize_buffer);
+
+        hal_critical_section_enter();
+        s_flush_buffer = NULL;
+        s_hud_finalize_buffer = NULL;
+        s_hud_busy = 0u;
+        s_flush_busy = 0u;
+        ++s_hud_async_count;
+        ++s_async_flush_count;
+        hal_critical_section_exit();
+    }
+#endif
+}
+
+#if DOOM_RENDER_ASYNC_HUD
+static void DoomVideo_WaitForAsyncHud(void)
+{
+    const uint32_t wait_start = hal_micros();
+    bool waited = false;
+
+    for (;;) {
+        uint8_t pending = 0;
+        uint8_t busy = 0;
+
+        hal_critical_section_enter();
+        pending = s_hud_pending;
+        busy = s_hud_busy;
+        hal_critical_section_exit();
+
+        if (pending == 0u && busy == 0u) {
+            if (waited) {
+                const uint32_t elapsed = hal_micros() - wait_start;
+
+                hal_critical_section_enter();
+                ++s_hud_wait_count;
+                s_hud_wait_us += elapsed;
+                hal_critical_section_exit();
+            }
+            return;
+        }
+
+        waited = true;
+        hal_delay_us(20u);
+    }
+}
+
+static bool DoomVideo_StartAsyncHud(void)
+{
+    bool started = false;
+
+    hal_critical_section_enter();
+    if (s_hud_pending == 0u && s_hud_busy == 0u &&
+        s_hud_finalize_buffer == NULL) {
+        s_hud_pending = 1u;
+        started = true;
+    }
+    hal_critical_section_exit();
+
+    return started;
+}
+
+static bool DoomVideo_StartAsyncFrameFinalize(const pixel_t *buffer)
+{
+    bool started = false;
+
+    hal_critical_section_enter();
+    if (s_hud_pending == 0u && s_hud_busy == 0u &&
+        s_hud_finalize_buffer == NULL) {
+        s_hud_finalize_buffer = buffer;
+        s_hud_pending = 1u;
+        s_flush_busy = 1u;
+        started = true;
+    }
+    hal_critical_section_exit();
+
+    return started;
+}
+
+void DoomVideo_GetAsyncHudStats(uint32_t *done, uint32_t *waits,
+                                uint32_t *wait_us)
+{
+    hal_critical_section_enter();
+    *done = s_hud_async_count;
+    *waits = s_hud_wait_count;
+    *wait_us = s_hud_wait_us;
     hal_critical_section_exit();
 }
+#else
+void DoomVideo_GetAsyncHudStats(uint32_t *done, uint32_t *waits,
+                                uint32_t *wait_us)
+{
+    *done = 0;
+    *waits = 0;
+    *wait_us = 0;
+}
+#endif
 
 void DoomVideo_GetAsyncFlushStats(uint32_t *flushes, uint32_t *waits,
                                   uint32_t *wait_us)
@@ -455,12 +723,33 @@ void DoomVideo_GetAsyncFlushStats(uint32_t *flushes, uint32_t *waits,
     hal_critical_section_exit();
 }
 
+void DoomVideo_GetDoubleBufferStats(uint32_t *swaps, uint32_t *waits,
+                                    uint32_t *wait_us)
+{
+#if DOOM_VIDEO_DOUBLE_BUFFER
+    hal_critical_section_enter();
+    *swaps = s_double_buffer_swap_count;
+    *waits = s_double_buffer_wait_count;
+    *wait_us = s_double_buffer_wait_us;
+    hal_critical_section_exit();
+#else
+    *swaps = 0;
+    *waits = 0;
+    *wait_us = 0;
+#endif
+}
+
 void I_FinishUpdate(void)
 {
     if (!s_display_ready) {
         return;
     }
 
+#if !DOOM_VIDEO_SYNC_FLUSH && DOOM_VIDEO_DOUBLE_BUFFER
+    if (palette_update_pending()) {
+        DoomVideo_WaitForAsyncFlush();
+    }
+#endif
     update_palette_if_needed();
 #if DOOM_VIDEO_SYNC_FLUSH
     DoomVideo_WaitForAsyncFlush();
@@ -505,11 +794,8 @@ void I_ReadScreen(pixel_t *scr)
     memcpy(scr, I_VideoBuffer, SCREENWIDTH * SCREENHEIGHT * sizeof(*scr));
 }
 
-void pd_end_frame(int wipe_start)
+static void DoomVideo_DrawFrameOverlay(void)
 {
-    (void)wipe_start;
-
-    DoomRenderDiag_MarkPhase(5u);
     const uint32_t hud_t0 = hal_micros();
 
 #if USE_WHD
@@ -548,6 +834,71 @@ void pd_end_frame(int wipe_start)
 #endif
 
     doom_render_us_hud = hal_micros() - hud_t0;
+}
+
+static void DoomVideo_DrawGameplayOverlayTo(pixel_t *buffer)
+{
+    const uint32_t hud_t0 = hal_micros();
+
+    V_SetRestoreBufferOverride(buffer);
+    V_RestoreBuffer();
+
+#if USE_WHD
+    begin_hal_patch_list();
+#endif
+
+    ST_Drawer(false, true);
+    if (gametic) {
+        HU_Drawer();
+    }
+
+#if USE_WHD
+    flush_hal_patch_list();
+#endif
+
+    V_SetRestoreBufferOverride(NULL);
+    V_RestoreBuffer();
+
+    doom_render_us_hud = hal_micros() - hud_t0;
+}
+
+static bool DoomVideo_CanFinalizeGameplayAsync(void)
+{
+#if DOOM_RENDER_ASYNC_HUD && DOOM_VIDEO_DOUBLE_BUFFER && !DOOM_VIDEO_SYNC_FLUSH
+    return gamestate == GS_LEVEL && gametic && !automapactive && !menuactive;
+#else
+    return false;
+#endif
+}
+
+void pd_end_frame(int wipe_start)
+{
+    (void)wipe_start;
+
+    DoomRenderDiag_MarkPhase(5u);
+
+#if DOOM_RENDER_ASYNC_HUD
+    if (DoomVideo_CanFinalizeGameplayAsync()) {
+        if (palette_update_pending()) {
+            DoomVideo_WaitForAsyncFlush();
+            update_palette_if_needed();
+        }
+        if (DoomVideo_StartAsyncFrameFinalize(I_VideoBuffer)) {
+            DoomRenderDiag_MarkPhase(7u);
+            return;
+        }
+    }
+#endif
+
+#if DOOM_RENDER_ASYNC_HUD
+    if (DoomVideo_StartAsyncHud()) {
+        DoomVideo_WaitForAsyncHud();
+    } else
+#endif
+    {
+        DoomVideo_DrawFrameOverlay();
+    }
+
     DoomRenderDiag_MarkPhase(6u);
     I_FinishUpdate();
     DoomRenderDiag_MarkPhase(7u);

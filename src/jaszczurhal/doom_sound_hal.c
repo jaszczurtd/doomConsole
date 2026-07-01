@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include <hal/hal_dma_pwm_audio.h>
+#include <hal/hal_serial.h>
 
 #include "deh_str.h"
 #include "doom/sounds.h"
@@ -569,6 +570,7 @@ static boolean I_Pico_InitSound(boolean _use_sfx_prefix)
 
     if (!hal_dma_pwm_audio_supported())
     {
+        hal_deb("[audio] DMA PWM audio unsupported");
         return false;
     }
 
@@ -595,6 +597,7 @@ static boolean I_Pico_InitSound(boolean _use_sfx_prefix)
     audio_dma = hal_dma_pwm_audio_create(&cfg);
     if (audio_dma == NULL)
     {
+        hal_deb("[audio] DMA PWM audio unavailable; continuing without sound");
         return false;
     }
 
@@ -604,6 +607,7 @@ static boolean I_Pico_InitSound(boolean _use_sfx_prefix)
 
     if (!hal_dma_pwm_audio_start(audio_dma))
     {
+        hal_deb("[audio] DMA PWM audio start failed; continuing without sound");
         I_Pico_ShutdownSound();
         return false;
     }

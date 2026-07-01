@@ -99,6 +99,10 @@ extern int strnicmp(const char *a, const char *b, size_t len);
 
 #include <inttypes.h>
 
+#if defined(ARDUINO) && !defined(__cplusplus)
+#include <stdbool.h>
+#endif
+
 #if defined(__cplusplus) || defined(__bool_true_false_are_defined)
 
 // Use builtin bool type with C++.
@@ -194,11 +198,24 @@ typedef uint8_t floor_ceiling_clip_t;
 
 #if PICO_ON_DEVICE
 #include <assert.h>
-#if !PICO_RP2350
-#define SHORTPTR_BASE 0x20000000
+#if PICO_RP2350
+/*
+ * RP2350 builds can place static shortptr-bearing objects below the zone heap
+ * while the zone itself extends much higher in SRAM. A 16-bit shortptr only
+ * covers one 256K window, so use real pointers on RP2350 and keep the compact
+ * encoding for RP2040 where RAM is tight.
+ */
+#define DOOM_SHORTPTR_FULL_PTR 1
+typedef uintptr_t shortptr_t;
+static inline void *shortptr_to_ptr(shortptr_t s) {
+    return (void *)s;
+}
+static inline shortptr_t ptr_to_shortptr(void *p) {
+    return (shortptr_t)p;
+}
 #else
-#define SHORTPTR_BASE 0x20030000
-#endif
+#define DOOM_SHORTPTR_FULL_PTR 0
+#define SHORTPTR_BASE 0x20000000
 typedef uint16_t shortptr_t;
 static inline void *shortptr_to_ptr(shortptr_t s) {
     return s ? (void *)(SHORTPTR_BASE + s * 4) : NULL;
@@ -216,7 +233,9 @@ static inline shortptr_t ptr_to_shortptr(void *p) {
     return (shortptr_t) ((v - SHORTPTR_BASE) >> 2);
 #endif
 }
+#endif
 #else
+#define DOOM_SHORTPTR_FULL_PTR 1
 typedef void *shortptr_t;
 #define shortptr_to_ptr(s) (s)
 #define ptr_to_shortptr(s) (s)
@@ -254,4 +273,3 @@ typedef void *shortptr_t;
 #endif
 
 #endif
-

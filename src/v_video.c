@@ -77,12 +77,35 @@ byte *xlatab = NULL;
 // The screen buffer that the v_video.c code draws to.
 
 static pixel_t *dest_screen = NULL;
-uint8_t vpatch_clip_top, vpatch_clip_bottom = SCREENHEIGHT;
+static pixel_t *restore_screen_override = NULL;
+uint16_t vpatch_clip_top, vpatch_clip_bottom = SCREENHEIGHT;
 
 #if USE_WHD
 vpatchlist_t *vpatchlist;
 #else
 int dirtybox[4];
+#endif
+
+#if USE_WHD && DOOM_HIGHRES_SCENE
+#define VANILLA_OVERLAY_WIDTH 320
+#define VANILLA_OVERLAY_HEIGHT 200
+#define VANILLA_STATUS_TOP 160
+
+static int highres_overlay_x(int x)
+{
+    return x + (SCREENWIDTH - VANILLA_OVERLAY_WIDTH) / 2;
+}
+
+static int highres_overlay_y(int y)
+{
+    if (y >= VANILLA_STATUS_TOP) {
+        return y + (SCREENHEIGHT - VANILLA_OVERLAY_HEIGHT);
+    }
+    return y;
+}
+#else
+static int highres_overlay_x(int x) { return x; }
+static int highres_overlay_y(int y) { return y; }
 #endif
 
 #if !DOOM_ONLY
@@ -190,7 +213,9 @@ void V_DrawPatchList(const vpatchlist_t *patchlist) {
         }
     }
     for (int l = 1; l < patchlist[0].header.size; l++) {
-        uint8_t *orig = dest_screen + (patchlist[l].entry.y) * SCREENWIDTH + patchlist[l].entry.x;
+        const int entry_x = highres_overlay_x((int)patchlist[l].entry.x);
+        const int entry_y = highres_overlay_y((int)patchlist[l].entry.y);
+        uint8_t *orig = dest_screen + entry_y * SCREENWIDTH + entry_x;
         const patch_t *patch = resolve_vpatch_handle(patchlist[l].entry.patch_handle);
         const uint8_t *pal;
         if (!vpatch_has_shared_palette(patch)) {
@@ -207,13 +232,13 @@ void V_DrawPatchList(const vpatchlist_t *patchlist) {
         int skip_top;
 #pragma GCC diagnostic pop
         int type = vpatch_type(patch);
-        if (patchlist[l].entry.y + h0 > vpatch_clip_bottom) {
+        if (entry_y + h0 > vpatch_clip_bottom) {
             // clipping bottom which is trivial
-            h0 = vpatch_clip_bottom - patchlist[l].entry.y;
+            h0 = vpatch_clip_bottom - entry_y;
             if (h0 <= 0) continue;
         }
-        if (patchlist[l].entry.y < vpatch_clip_top) {
-            skip_top = vpatch_clip_top - patchlist[l].entry.y;
+        if (entry_y < vpatch_clip_top) {
+            skip_top = vpatch_clip_top - entry_y;
             if (skip_top >= h0) continue;
             h0 -= skip_top;
             type += vp4_runs_clipped - vp4_runs;
@@ -883,7 +908,13 @@ void V_UseBuffer(pixel_t *buffer) {
 // Restore screen buffer to the i_video screen buffer.
 
 void V_RestoreBuffer(void) {
-    dest_screen = I_VideoBuffer;
+    dest_screen = restore_screen_override != NULL
+                    ? restore_screen_override
+                    : I_VideoBuffer;
+}
+
+void V_SetRestoreBufferOverride(pixel_t *buffer) {
+    restore_screen_override = buffer;
 }
 
 //

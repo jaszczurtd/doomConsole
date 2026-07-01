@@ -206,7 +206,11 @@ static inline void sector_delta_ceilingheight(sector_t *s, fixed_t d) {
 #endif
 
 #if PICO_ON_DEVICE
+#if DOOM_SHORTPTR_FULL_PTR
+static_assert(sizeof(sector_t) == 0x2c, "");
+#else
 static_assert(sizeof(sector_t) == 0x24, "");
+#endif
 #endif
 
 //

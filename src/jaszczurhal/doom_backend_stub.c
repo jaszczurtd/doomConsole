@@ -114,8 +114,8 @@ static uint8_t s_flat_decoder_tmp[HAL_FLAT_DECODER_TMP_BYTES];
 static uint8_t s_flat_prefix_lengths[256];
 static int s_flat_cache_picnum = -1;
 static uint16_t s_plane_queue_x[HAL_PLANE_QUEUE_MAX];
-static uint8_t s_plane_queue_yl[HAL_PLANE_QUEUE_MAX];
-static uint8_t s_plane_queue_yh[HAL_PLANE_QUEUE_MAX];
+static uint16_t s_plane_queue_yl[HAL_PLANE_QUEUE_MAX];
+static uint16_t s_plane_queue_yh[HAL_PLANE_QUEUE_MAX];
 static uint8_t s_plane_queue_fd[HAL_PLANE_QUEUE_MAX];
 static uint8_t s_plane_queue_done[(HAL_PLANE_QUEUE_MAX + 7u) / 8u];
 static uint16_t s_plane_queue_count;
@@ -124,8 +124,8 @@ static volatile uint8_t s_plane_render_busy;
 static volatile uint32_t s_plane_render_async_count;
 static volatile uint32_t s_plane_render_wait_count;
 static volatile uint32_t s_plane_render_wait_us;
-static uint8_t s_plane_span_top[SCREENWIDTH];
-static uint8_t s_plane_span_bottom[SCREENWIDTH];
+static uint16_t s_plane_span_top[SCREENWIDTH];
+static uint16_t s_plane_span_bottom[SCREENWIDTH];
 
 #if DOOM_DUAL_CORE_COLUMNS
 // Bounded column queue (flush-on-full).  Captures everything pd_add_column()
@@ -214,8 +214,13 @@ void pd_init(void) {}
 
 extern void DoomVideo_Core1Poll(void);
 extern void DoomVideo_WaitForAsyncFlush(void);
+extern void DoomVideo_BeginRenderFrame(void);
 extern void DoomVideo_GetAsyncFlushStats(uint32_t *flushes, uint32_t *waits,
                                          uint32_t *wait_us);
+extern void DoomVideo_GetDoubleBufferStats(uint32_t *swaps, uint32_t *waits,
+                                           uint32_t *wait_us);
+extern void DoomVideo_GetAsyncHudStats(uint32_t *done, uint32_t *waits,
+                                       uint32_t *wait_us);
 extern void DoomRenderOcclusionDiag_Get(uint16_t *columns, uint16_t *clipped);
 
 static void plane_render_async_poll(void);
@@ -316,10 +321,16 @@ void DoomRenderDiag_StartRun(void)
 void DoomHAL_LogRenderConfig(void)
 {
     deb("[boot] rendercfg: DUAL_CORE=%d ASYNC_PLANES=%d SYNC_FLUSH=%d "
+        "ASYNC_HUD=%d DBUF=%d flush_lines=%u flushbuf=%uB "
         "slots=%u (%u/core) height=%uB cache_bytes=%u tall=%u/%uB colqueue_bytes=%u",
         (int)DOOM_DUAL_CORE_COLUMNS,
         (int)DOOM_RENDER_ASYNC_PLANES,
         (int)DOOM_VIDEO_SYNC_FLUSH,
+        (int)DOOM_RENDER_ASYNC_HUD,
+        (int)DOOM_VIDEO_DOUBLE_BUFFER,
+        (unsigned)DOOM_FLUSH_LINES,
+        (unsigned)(SCREENWIDTH * 2u * DOOM_FLUSH_LINES *
+                   DOOM_FLUSH_PIPELINE_BUFFERS),
         (unsigned)HAL_PATCH_COLUMN_CACHE_SLOTS,
         (unsigned)(HAL_PATCH_COLUMN_CACHE_SLOTS / HAL_PATCH_COLUMN_CACHE_CORES),
         (unsigned)HAL_PATCH_COLUMN_CACHE_HEIGHT,
@@ -397,10 +408,14 @@ void __attribute__((noreturn)) __assert(const char *file, int line,
 
 static int active_view_height(void)
 {
+#if DOOM_HIGHRES_SCENE
+    return viewheight > 0 ? viewheight : SCREENHEIGHT;
+#else
     if (viewheight > 0 && viewheight <= MAIN_VIEWHEIGHT) {
         return viewheight;
     }
     return MAIN_VIEWHEIGHT;
+#endif
 }
 
 static pixel_t debug_color(uint8_t base, bool use_current_colormap)
@@ -732,8 +747,8 @@ static bool queue_flat_vertical(int x, int yl, int yh, int fd_num)
 
     const unsigned index = s_plane_queue_count++;
     s_plane_queue_x[index] = (uint16_t)x;
-    s_plane_queue_yl[index] = (uint8_t)yl;
-    s_plane_queue_yh[index] = (uint8_t)yh;
+    s_plane_queue_yl[index] = (uint16_t)yl;
+    s_plane_queue_yh[index] = (uint16_t)yh;
     s_plane_queue_fd[index] = (uint8_t)fd_num;
     return true;
 }
@@ -799,7 +814,9 @@ static bool render_queued_plane_fd(int fd_num)
     // defers its extra range to the next pass instead of overwriting it.
     bool more_passes = true;
     while (more_passes) {
-        memset(s_plane_span_top, 0xff, sizeof(s_plane_span_top));
+        for (int i = 0; i < SCREENWIDTH; ++i) {
+            s_plane_span_top[i] = UINT16_MAX;
+        }
 
         int min_x = SCREENWIDTH;
         int max_x = -1;
@@ -814,7 +831,7 @@ static bool render_queued_plane_fd(int fd_num)
             }
 
             const int x = s_plane_queue_x[i];
-            if (s_plane_span_top[x] != 0xffu) {
+            if (s_plane_span_top[x] != UINT16_MAX) {
                 // Second range for this column: handle in a later pass.
                 more_passes = true;
                 if (s_debug_plane_overwrite != UINT16_MAX) {
@@ -826,8 +843,8 @@ static bool render_queued_plane_fd(int fd_num)
             const int yl = s_plane_queue_yl[i];
             const int yh = s_plane_queue_yh[i];
 
-            s_plane_span_top[x] = (uint8_t)yl;
-            s_plane_span_bottom[x] = (uint8_t)yh;
+            s_plane_span_top[x] = (uint16_t)yl;
+            s_plane_span_bottom[x] = (uint16_t)yh;
             if (x < min_x) {
                 min_x = x;
             }
@@ -855,7 +872,7 @@ static bool render_queued_plane_fd(int fd_num)
             int x = min_x;
             while (x <= max_x) {
                 while (x <= max_x &&
-                       (s_plane_span_top[x] == 0xffu ||
+                       (s_plane_span_top[x] == UINT16_MAX ||
                         y < s_plane_span_top[x] ||
                         y > s_plane_span_bottom[x])) {
                     ++x;
@@ -868,7 +885,7 @@ static bool render_queued_plane_fd(int fd_num)
                 do {
                     ++x;
                 } while (x <= max_x &&
-                         s_plane_span_top[x] != 0xffu &&
+                         s_plane_span_top[x] != UINT16_MAX &&
                          y >= s_plane_span_top[x] &&
                          y <= s_plane_span_bottom[x]);
 
@@ -1642,27 +1659,36 @@ static bool draw_textured_vertical_pixels(int x, int yl, int yh,
     }
     fixed_t frac = texturemid + (yl - centery) * fracstep;
 
-    for (int y = yl; y <= yh; ++y) {
-        int source_y = frac >> FRACBITS;
-        if (tile) {
-            if (pow2) {
-                source_y &= height_mask;
-            } else {
-                source_y %= source_height;
-                if (source_y < 0) {
-                    source_y += source_height;
-                }
+    if (tile && pow2) {
+        for (int y = yl; y <= yh; ++y) {
+            const int source_y = (frac >> FRACBITS) & height_mask;
+            *dest = map[source_pixels[source_y]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+        }
+    } else if (tile) {
+        for (int y = yl; y <= yh; ++y) {
+            int source_y = frac >> FRACBITS;
+            source_y %= source_height;
+            if (source_y < 0) {
+                source_y += source_height;
             }
-        } else {
+            *dest = map[source_pixels[source_y]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
+        }
+    } else {
+        for (int y = yl; y <= yh; ++y) {
+            int source_y = frac >> FRACBITS;
             if (source_y < 0) {
                 source_y = 0;
             } else if (source_y >= source_height) {
                 source_y = source_height - 1;
             }
+            *dest = map[source_pixels[source_y]];
+            dest += SCREENWIDTH;
+            frac += fracstep;
         }
-        *dest = map[source_pixels[source_y]];
-        dest += SCREENWIDTH;
-        frac += fracstep;
     }
 
     return true;
@@ -1739,7 +1765,7 @@ static uint8_t column_base_color(pd_column_type type)
 
 void pd_begin_frame(void)
 {
-    DoomVideo_WaitForAsyncFlush();
+    DoomVideo_BeginRenderFrame();
 
     hal_alive_mark();
     hal_stack_guard_check();
@@ -1755,6 +1781,9 @@ void pd_begin_frame(void)
         uint32_t async_flushes = 0;
         uint32_t async_waits = 0;
         uint32_t async_wait_us = 0;
+        uint32_t hud_async_done = 0;
+        uint32_t hud_async_waits = 0;
+        uint32_t hud_async_wait_us = 0;
         uint16_t sprite_seg_overflow = 0;
         uint8_t sprite_seg_max = 0;
         uint32_t t_bsp = 0, t_planes = 0, t_masked = 0;
@@ -1763,6 +1792,7 @@ void pd_begin_frame(void)
         uint32_t plane_async_wait_us = 0;
         uint32_t col_async_done = 0, col_async_waits = 0;
         uint32_t col_async_wait_us = 0;
+        uint32_t dbuf_swaps = 0, dbuf_waits = 0, dbuf_wait_us = 0;
 #if JASZCZURHAL_PORT
         DoomRenderSpriteDiag_Get(&sprite_seen, &sprite_projected,
                                  &sprite_queued, &sprite_drawn);
@@ -1777,6 +1807,10 @@ void pd_begin_frame(void)
         DoomRenderOcclusionDiag_Get(&occluder_columns, &occluder_clipped);
         DoomVideo_GetAsyncFlushStats(&async_flushes, &async_waits,
                                      &async_wait_us);
+        DoomVideo_GetDoubleBufferStats(&dbuf_swaps, &dbuf_waits,
+                                       &dbuf_wait_us);
+        DoomVideo_GetAsyncHudStats(&hud_async_done, &hud_async_waits,
+                                   &hud_async_wait_us);
 #endif
         // FPS x10 over the frames since the previous log line.
         const uint32_t now_ms = hal_millis();
@@ -1794,6 +1828,7 @@ void pd_begin_frame(void)
         // Y-bands: top=ceiling/sky, mid=walls, bot=floor.  Using the sentinel
         // (not 0) avoids counting legitimate black texture pixels.
         unsigned black = 0, black_top = 0, black_mid = 0, black_bot = 0;
+#if DOOM_RENDER_BLACK_DIAG
         {
             const int vh = active_view_height();
             const int third = vh / 3;
@@ -1815,6 +1850,7 @@ void pd_begin_frame(void)
                 }
             }
         }
+#endif
 
         deb("[render] frame=%lu fps=%u.%u cols=%u planes=%u pdrop=%u "
                            "masked=%u texfail=%u flatfail=%u black=%u/%u/%u/%u "
@@ -1825,7 +1861,9 @@ void pd_begin_frame(void)
                            "ccol=%u/%u/%u/%u "
                            "casync=%lu/%lu/%lu "
                            "pasync=%lu/%lu/%lu "
-                           "flush=%lu/%lu/%lu free_heap=%lu\n",
+                           "hasync=%lu/%lu/%lu "
+                           "flush=%lu/%lu/%lu "
+                           "dbuf=%lu/%lu/%lu free_heap=%lu\n",
                            (unsigned long)s_render_frame,
                            fps_x10 / 10u, fps_x10 % 10u, s_debug_columns,
                            s_debug_planes, s_debug_plane_drops,
@@ -1862,14 +1900,27 @@ void pd_begin_frame(void)
                            (unsigned long)plane_async_done,
                            (unsigned long)plane_async_waits,
                            (unsigned long)(plane_async_wait_us / 1000u),
+                           (unsigned long)hud_async_done,
+                           (unsigned long)hud_async_waits,
+                           (unsigned long)(hud_async_wait_us / 1000u),
                            (unsigned long)async_flushes,
                            (unsigned long)async_waits,
                            (unsigned long)(async_wait_us / 1000u),
+                           (unsigned long)dbuf_swaps,
+                           (unsigned long)dbuf_waits,
+                           (unsigned long)(dbuf_wait_us / 1000u),
                            (unsigned long)hal_get_free_heap());
     }
 
+#if DOOM_RENDER_SENTINEL_CLEAR
     memset(I_VideoBuffer, DOOM_UNDRAWN_SENTINEL,
            SCREENWIDTH * active_view_height());
+#else
+    if (gamestate != GS_LEVEL || automapactive) {
+        memset(I_VideoBuffer, DOOM_UNDRAWN_SENTINEL,
+               SCREENWIDTH * active_view_height());
+    }
+#endif
     reset_framedrawables();
     s_debug_columns = 0;
     s_debug_planes = 0;
@@ -2090,24 +2141,25 @@ void pd_add_column(pd_column_type type)
 #endif
 }
 
-void pd_add_masked_columns(uint8_t *ys, int seg_count)
+void pd_add_masked_columns(const pd_masked_segment_t *segments, int seg_count)
 {
     const pixel_t color = debug_color(column_base_color(PDCOL_MASKED), true);
 
     for (int i = 0; i < seg_count; ++i) {
+        const pd_masked_segment_t *seg = &segments[i];
         const fixed_t texturemid =
-            dc_texturemid - ((fixed_t)ys[i * 3 + 2] << FRACBITS);
+            dc_texturemid - ((fixed_t)seg->source_y << FRACBITS);
         const bool textured =
-            draw_textured_vertical(dc_x, ys[i * 3], ys[i * 3 + 1],
+            draw_textured_vertical(dc_x, seg->yl, seg->yh,
                                    texturemid, dc_iscale, dc_source, false);
 
         s_render_diag.last_type = (uint8_t)PDCOL_MASKED;
         s_render_diag.last_x = (int16_t)dc_x;
-        s_render_diag.last_yl = (int16_t)ys[i * 3];
-        s_render_diag.last_yh = (int16_t)ys[i * 3 + 1];
+        s_render_diag.last_yl = (int16_t)seg->yl;
+        s_render_diag.last_yh = (int16_t)seg->yh;
         render_diag_touch(3u);
         if (!textured) {
-            draw_debug_vertical(dc_x, ys[i * 3], ys[i * 3 + 1], color);
+            draw_debug_vertical(dc_x, seg->yl, seg->yh, color);
             if (s_debug_tex_fail != UINT16_MAX) {
                 ++s_debug_tex_fail;
             }

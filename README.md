@@ -10,7 +10,16 @@ port replaces the original Pico SDK VGA/I2S/TinyUSB backend with a JaszczurHAL
 application model, TFT output, HAL-backed input/audio/storage glue, and a
 single CMake flow that builds through Arduino-Pico.
 
+
+RP2040 ILI9341 320x200:
 [![DoomConsole demo](https://img.youtube.com/vi/PHE-ADc1qWk/maxresdefault.jpg)](https://www.youtube.com/watch?v=PHE-ADc1qWk)
+
+RP2350 ILI9341 320x200:
+[![DoomConsole demo](https://img.youtube.com/vi/I1niNYLehJY/maxresdefault.jpg)](https://www.youtube.com/watch?v=I1niNYLehJY)
+
+RP2350 ST7796S 480x320:
+[![DoomConsole demo](https://img.youtube.com/vi/YNoUZEpIq5A/maxresdefault.jpg)](https://www.youtube.com/watch?v=YNoUZEpIq5A)
+
 
 ## What This Port Is
 
@@ -68,6 +77,70 @@ Common groups in `doom_main_config.h`:
 
 Most values can still be overridden from CMake/compiler definitions before
 `doom_main_config.h` is included. 
+
+### VS Code Build Options
+
+The helper scripts read the active board and display options from
+`.vscode/settings.json`.  The most useful Doom-specific keys are:
+
+- `doom.tftPanel` - display driver, either `ili9341` or `st7796s`.
+- `doom.highresScene` - render the scene at the full panel resolution:
+  `320x240` on ILI9341 or `480x320` on ST7796S.  The ST7796S path is supported
+  only for RP2350/Pico 2.
+- `doom.tftSpiHz` - optional SPI clock request.  If omitted, the scripts choose
+  a board/panel default.
+- `doom.sysClockKhz` - optional RP2040/RP2350 system clock request.
+- `doom.dualCoreColumns`, `doom.asyncPlanes`, `doom.videoSyncFlush` -
+  renderer/flush experiments; the default active values are conservative.
+
+To use the classic ILI9341 path, keep highres disabled:
+
+```json
+{
+    "doom.tftPanel": "ili9341",
+    "doom.highresScene": false
+}
+```
+
+This works on RP2040 and RP2350 builds.  For a regular RP2040 Pico-style board
+the FQBN can be, for example:
+
+```json
+{
+    "arduino.fqbn": "rp2040:rp2040:rpipico:flash=2097152_524288,usbstack=tinyusb"
+}
+```
+
+To fill the whole 320x240 ILI9341 panel, enable highres while keeping the
+ILI9341 driver:
+
+```json
+{
+    "doom.tftPanel": "ili9341",
+    "doom.highresScene": true
+}
+```
+
+To use the 4.0 inch ST7796S 480x320 path, select an RP2350/Pico 2 board and
+enable highres:
+
+```json
+{
+    "arduino.fqbn": "rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb",
+    "doom.tftPanel": "st7796s",
+    "doom.highresScene": true
+}
+```
+
+`st7796s` is intentionally rejected for RP2040 targets.  The ST7796S full-panel
+framebuffer and flush buffers are RP2350-only.
+
+After changing these settings, regenerate the CMake cache and rebuild:
+
+```bash
+./scripts/configure-cmake.sh
+cmake --build .build/cmake --target firmware -j2
+```
 
 ## Build Requirements
 

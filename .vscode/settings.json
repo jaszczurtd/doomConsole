@@ -1,7 +1,7 @@
 {
     "arduino.cliPath": "arduino-cli",
-    "arduino.fqbn": "rp2040:rp2040:waveshare_rp2040_plus:flash=4194304_0,usbstack=tinyusb",
-    "arduino.boardDescription": "Waveshare RP2040 Plus 4MB Doom (TinyUSB)",
+    "arduino.fqbn": "rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb",
+    "arduino.boardDescription": "Raspberry Pi Pico 2 W",
     "arduino.uploadPort": "/dev/ttyACM0",
     "arduino.sketchbookPath": "/home/jaszczurtd/development/projects_git",
     "arduino.buildDir": "${workspaceFolder}/.build/arduino",
@@ -10,6 +10,8 @@
     "doom.dualCoreColumns": false,
     "doom.asyncPlanes": false,
     "doom.videoSyncFlush": false,
+    "doom.tftPanel": "ili9341",
+    "doom.highresScene": true,
     "C_Cpp.default.configurationProvider": "ms-vscode.cpptools",
     "C_Cpp.errorSquiggles": "enabled",
     "cortex-debug.openocdPath": "${userHome}/.arduino15/packages/rp2040/tools/pqt-openocd/4.1.0-1aec55e/bin/openocd",
