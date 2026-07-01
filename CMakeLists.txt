@@ -12,6 +12,8 @@ set(DOOM_BOOT_PROBE_ONLY OFF CACHE BOOL "Build a minimal app_start/app_task0 smo
 set(DOOM_DUAL_CORE_COLUMNS "0" CACHE STRING "Enable queued wall-column rendering path for staged dual-core work")
 set(DOOM_RENDER_ASYNC_PLANES "0" CACHE STRING "Render visplanes on core1 concurrently with core0 columns/sprites")
 set(DOOM_VIDEO_SYNC_FLUSH "0" CACHE STRING "Diagnostic: flush the TFT synchronously on core0 instead of async on core1")
+set(DOOM_SYS_CLOCK_KHZ "250000" CACHE STRING "System clock (kHz) applied at boot; configure-cmake.sh derives it per target (RP2040 250000 / RP2350 300000)")
+set(JH_ILI9341_SPI_DEFAULT_HZ "41666666" CACHE STRING "Requested TFT SPI clock (Hz); actual = clk_peri / even divisor. configure-cmake.sh derives it per target")
 set(ARDUINO_RP2040_PLATFORM_PATH "$ENV{HOME}/.arduino15/packages/rp2040/hardware/rp2040/5.4.0" CACHE PATH "Arduino-Pico platform path")
 set(ARDUINO_TINYUSB_SRC "${ARDUINO_RP2040_PLATFORM_PATH}/libraries/Adafruit_TinyUSB_Arduino/src" CACHE PATH "Adafruit TinyUSB source include path")
 set(JH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../libraries/JaszczurHAL" CACHE PATH "JaszczurHAL library root")
@@ -195,8 +197,9 @@ set(DOOM_PORT_DEFINES
     DOOM_RENDER_ASYNC_PLANES=${DOOM_RENDER_ASYNC_PLANES}
     DOOM_VIDEO_SYNC_FLUSH=${DOOM_VIDEO_SYNC_FLUSH}
     DOOM_DUAL_CORE_COLUMNS=${DOOM_DUAL_CORE_COLUMNS}
+    DOOM_SYS_CLOCK_KHZ=${DOOM_SYS_CLOCK_KHZ}
     DOOM_SPRITE_OCCLUSION=0
-    JH_ILI9341_SPI_DEFAULT_HZ=41666666
+    JH_ILI9341_SPI_DEFAULT_HZ=${JH_ILI9341_SPI_DEFAULT_HZ}
     SHRINK_MOBJ=1
     FIXED_SCREENWIDTH=1
     FLOOR_CEILING_CLIP_8BIT=0

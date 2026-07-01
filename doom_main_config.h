@@ -36,19 +36,31 @@
 /* System clock / overclock.
  *
  * Native rp2040-doom runs the core at 270 MHz @ 1.30V; the Arduino-Pico core
- * boots at only 125 MHz and the port's own set_sys_clock_khz() is compiled out
- * (see src/i_main.c: gated by !JASZCZURHAL_PORT).  We re-issue it in app_start().
+ * boots low and the port's own set_sys_clock_khz() is compiled out (see
+ * src/i_main.c, gated by !JASZCZURHAL_PORT), so we re-issue it in app_start().
  *
- * 250 MHz is chosen deliberately: clk_peri is retied to clk_sys, and the TFT
- * SPI baud is clk_peri / (even divisor).  250 MHz divides cleanly to 62.5 MHz
- * (250/4) which is the intended TFT SPI rate; 276 MHz would only reach 46 MHz
- * (276/6, since 276/4 = 69 MHz exceeds the 62.5 MHz request). */
+ * The authoritative value is normally passed as -D by scripts/configure-cmake.sh,
+ * which derives it from the target in the FQBN (RP2040 250 MHz / RP2350 300 MHz).
+ * These are only fallbacks for builds that bypass that script.  The value is
+ * chosen so clk_peri (= clk_sys) divides cleanly to the TFT SPI request by 6:
+ * 250/6 = 41.67 MHz, 300/6 = 50 MHz. */
 #ifndef DOOM_SYS_OVERCLOCK
 #define DOOM_SYS_OVERCLOCK 1
 #endif
 
 #ifndef DOOM_SYS_CLOCK_KHZ
+#if PICO_RP2350
+#define DOOM_SYS_CLOCK_KHZ 300000u
+#else
 #define DOOM_SYS_CLOCK_KHZ 250000u
+#endif
+#endif
+
+/* Core voltage for the overclock.  VREG_VOLTAGE_1_30 (1.30 V) is defined on both
+ * RP2040 and RP2350 (on RP2350 it is not even the maximum), so no per-target
+ * branch is needed; override here if a board needs a different point. */
+#ifndef DOOM_SYS_VREG_VOLTAGE
+#define DOOM_SYS_VREG_VOLTAGE VREG_VOLTAGE_1_30
 #endif
 
 /* TFT/display */

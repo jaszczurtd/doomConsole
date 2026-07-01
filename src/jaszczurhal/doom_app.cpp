@@ -280,7 +280,9 @@ void app_start(void) {
   {
     const uint32_t before_hz = clock_get_hz(clk_sys);
 #if defined(DOOM_HAVE_PICO_VREG)
-    vreg_set_voltage(VREG_VOLTAGE_1_30);
+    // DOOM_SYS_VREG_VOLTAGE defaults to VREG_VOLTAGE_1_30 (valid on RP2040 and
+    // RP2350); enough headroom for 250 MHz (RP2040) and 300 MHz (RP2350).
+    vreg_set_voltage(DOOM_SYS_VREG_VOLTAGE);
     hal_delay_us(1000u);
 #endif
     const bool clk_ok = set_sys_clock_khz(DOOM_SYS_CLOCK_KHZ, true);

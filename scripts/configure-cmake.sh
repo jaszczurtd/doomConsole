@@ -80,14 +80,35 @@ main() {
     async_planes="$(read_bool01 "doom.asyncPlanes" "false")"
     video_sync_flush="$(read_bool01 "doom.videoSyncFlush" "false")"
 
+    # Detect the target chip from the FQBN.  Earle's core keeps the "rp2040"
+    # platform id even for RP2350 boards, so match the board name: rpipico2 /
+    # rpipico2w / waveshare_rp2350_* carry "pico2" or "rp2350".
+    local target sys_clock_default spi_hz_default
+    if [[ "$fqbn" == *pico2* || "$fqbn" == *rp2350* ]]; then
+        target="RP2350"
+        sys_clock_default="300000"    # M33 overclock
+        spi_hz_default="50000000"     # 300 MHz clk_peri / 6 = 50 MHz (clean)
+    else
+        target="RP2040"
+        sys_clock_default="250000"
+        spi_hz_default="41666666"     # 250 MHz clk_peri / 6 = 41.67 MHz (clean, no flicker)
+    fi
+    # settings.json may override the target defaults for fine-tuning.
+    local sys_clock_khz tft_spi_hz
+    sys_clock_khz="$(read_setting "doom.sysClockKhz" "$sys_clock_default")"
+    tft_spi_hz="$(read_setting "doom.tftSpiHz" "$spi_hz_default")"
+
     info "Configuring CMake firmware build"
     info "  CLI:         $cli"
     info "  FQBN:        $fqbn"
+    info "  Target:      $target"
     info "  JaszczurHAL: $jh_root"
     info "  Boot probe:  $boot_probe_only"
     info "  Dual-core columns: $dual_core"
     info "  Async planes (core1): $async_planes"
     info "  Video sync flush: $video_sync_flush"
+    info "  System clock: ${sys_clock_khz} kHz"
+    info "  TFT SPI request: ${tft_spi_hz} Hz"
 
     if [[ -f "$ENSURE_CORE_SCRIPT" ]]; then
         info "Ensuring required Arduino core version..."
@@ -104,6 +125,8 @@ main() {
         -DDOOM_DUAL_CORE_COLUMNS="$dual_core" \
         -DDOOM_RENDER_ASYNC_PLANES="$async_planes" \
         -DDOOM_VIDEO_SYNC_FLUSH="$video_sync_flush" \
+        -DDOOM_SYS_CLOCK_KHZ="$sys_clock_khz" \
+        -DJH_ILI9341_SPI_DEFAULT_HZ="$tft_spi_hz" \
         -DJH_ROOT="$jh_root"
 
     ok "CMake configured: $CMAKE_BUILD_DIR"
