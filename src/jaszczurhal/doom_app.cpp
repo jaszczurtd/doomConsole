@@ -19,6 +19,10 @@
 #include <hardware/clocks.h>
 #define DOOM_HAVE_PICO_CLOCKS 1
 #endif
+#if __has_include(<hardware/vreg.h>)
+#include <hardware/vreg.h>
+#define DOOM_HAVE_PICO_VREG 1
+#endif
 
 #include "i_main.h"
 #include "doom_main_config.h"
@@ -27,6 +31,7 @@
 
 extern "C" void DoomRenderDiag_ReportRetained(void);
 extern "C" void DoomRenderDiag_StartRun(void);
+extern "C" void DoomHAL_LogRenderConfig(void);
 
 bool core1_separate_stack = true;
 
@@ -225,6 +230,8 @@ void app_start(void) {
   debugInit();
   hal_deb_set_prefix("DOOM");
 
+  hal_delay_ms(4000u);
+
   deb("");
   deb("[boot] rp2040-doom boot");
   deb("[boot] build: %s %s", __DATE__, __TIME__);
@@ -258,22 +265,45 @@ void app_start(void) {
   }
   DoomRenderDiag_ReportRetained();
   DoomRenderDiag_StartRun();
+  DoomHAL_LogRenderConfig();
 
 #ifdef F_CPU
   deb("[boot] F_CPU=%lu", (unsigned long)F_CPU);
 #endif
 
+#if DOOM_SYS_OVERCLOCK && defined(DOOM_HAVE_PICO_CLOCKS)
+  // Native rp2040-doom raises the core to 270 MHz @ 1.30V; the Arduino-Pico core
+  // boots at 125 MHz and the port's own overclock (src/i_main.c) is compiled out
+  // for JASZCZURHAL_PORT.  Re-issue it here: bump voltage first, then clock,
+  // before any peripheral (SPI/TFT) is configured.  clk_peri is retied to
+  // clk_sys just below, so the TFT SPI bus scales with the new system clock.
+  {
+    const uint32_t before_hz = clock_get_hz(clk_sys);
+#if defined(DOOM_HAVE_PICO_VREG)
+    vreg_set_voltage(VREG_VOLTAGE_1_30);
+    hal_delay_us(1000u);
+#endif
+    const bool clk_ok = set_sys_clock_khz(DOOM_SYS_CLOCK_KHZ, true);
+    deb("[boot] overclock %s: clk_sys %lu -> %lu Hz (requested %u kHz)",
+        clk_ok ? "OK" : "FAILED", (unsigned long)before_hz,
+        (unsigned long)clock_get_hz(clk_sys), (unsigned int)DOOM_SYS_CLOCK_KHZ);
+  }
+#endif
+
 #ifdef DOOM_HAVE_PICO_CLOCKS
   // Move clk_peri from PLL_USB (48 MHz) to PLL_SYS so the TFT SPI bus is no
   // longer capped at 24 MHz.  Done before any SPI/UART/I2C peripheral is
-  // configured (display init happens later in I_DoomMain).
+  // configured (display init happens later in I_DoomMain).  With clk_sys at
+  // 250 MHz this frees the TFT SPI request (62.5 MHz) to be met exactly.
   {
     const uint32_t sys_hz = clock_get_hz(clk_sys);
     clock_configure(clk_peri, 0,
                     CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
                     sys_hz, sys_hz);
-    deb("[boot] clk_peri -> %lu Hz (was 48 MHz; frees TFT SPI to 62.5 MHz)",
-        (unsigned long)clock_get_hz(clk_peri));
+    deb("[boot] clk_peri -> %lu Hz (was 48 MHz); TFT SPI request=%lu Hz -> "
+        "actual<=clk_peri/even_div",
+        (unsigned long)clock_get_hz(clk_peri),
+        (unsigned long)JH_ILI9341_SPI_DEFAULT_HZ);
   }
 #endif
   deb("[boot] flash: xip=0x%08lx size=0x%08lx end=0x%08lx",

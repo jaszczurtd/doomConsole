@@ -10,6 +10,8 @@ set(ARDUINO_UPLOAD_PORT "" CACHE STRING "Arduino upload port")
 set(ARDUINO_VERBOSE OFF CACHE BOOL "Enable verbose Arduino CLI output")
 set(DOOM_BOOT_PROBE_ONLY OFF CACHE BOOL "Build a minimal app_start/app_task0 smoke-test firmware")
 set(DOOM_DUAL_CORE_COLUMNS "0" CACHE STRING "Enable queued wall-column rendering path for staged dual-core work")
+set(DOOM_RENDER_ASYNC_PLANES "0" CACHE STRING "Render visplanes on core1 concurrently with core0 columns/sprites")
+set(DOOM_VIDEO_SYNC_FLUSH "0" CACHE STRING "Diagnostic: flush the TFT synchronously on core0 instead of async on core1")
 set(ARDUINO_RP2040_PLATFORM_PATH "$ENV{HOME}/.arduino15/packages/rp2040/hardware/rp2040/5.4.0" CACHE PATH "Arduino-Pico platform path")
 set(ARDUINO_TINYUSB_SRC "${ARDUINO_RP2040_PLATFORM_PATH}/libraries/Adafruit_TinyUSB_Arduino/src" CACHE PATH "Adafruit TinyUSB source include path")
 set(JH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../libraries/JaszczurHAL" CACHE PATH "JaszczurHAL library root")
@@ -172,9 +174,11 @@ else()
     set(DOOM_BOOT_PROBE_DEFINE DOOM_BOOT_PROBE_ONLY=0)
 endif()
 
-if(NOT DOOM_DUAL_CORE_COLUMNS MATCHES "^[01]$")
-    message(FATAL_ERROR "DOOM_DUAL_CORE_COLUMNS must be 0 or 1")
-endif()
+foreach(_flag DOOM_DUAL_CORE_COLUMNS DOOM_RENDER_ASYNC_PLANES DOOM_VIDEO_SYNC_FLUSH)
+    if(NOT ${_flag} MATCHES "^[01]$")
+        message(FATAL_ERROR "${_flag} must be 0 or 1 (got '${${_flag}}')")
+    endif()
+endforeach()
 
 set(DOOM_PORT_DEFINES
     ${DOOM_BOOT_PROBE_DEFINE}
@@ -188,11 +192,11 @@ set(DOOM_PORT_DEFINES
     JASZCZURHAL_PORT=1
     JASZCZURHAL_ZONE_BYTES=65536
     JASZCZURHAL_ZONE_MIN_BYTES=49152
-    DOOM_RENDER_ASYNC_PLANES=0
-    DOOM_VIDEO_SYNC_FLUSH=0
+    DOOM_RENDER_ASYNC_PLANES=${DOOM_RENDER_ASYNC_PLANES}
+    DOOM_VIDEO_SYNC_FLUSH=${DOOM_VIDEO_SYNC_FLUSH}
     DOOM_DUAL_CORE_COLUMNS=${DOOM_DUAL_CORE_COLUMNS}
     DOOM_SPRITE_OCCLUSION=0
-    JH_ILI9341_SPI_DEFAULT_HZ=50000000
+    JH_ILI9341_SPI_DEFAULT_HZ=41666666
     SHRINK_MOBJ=1
     FIXED_SCREENWIDTH=1
     FLOOR_CEILING_CLIP_8BIT=0

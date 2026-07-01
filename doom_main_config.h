@@ -33,6 +33,24 @@
 #define DOOM_BOOT_BLOCKED_SCAN_MS 5000u
 #endif
 
+/* System clock / overclock.
+ *
+ * Native rp2040-doom runs the core at 270 MHz @ 1.30V; the Arduino-Pico core
+ * boots at only 125 MHz and the port's own set_sys_clock_khz() is compiled out
+ * (see src/i_main.c: gated by !JASZCZURHAL_PORT).  We re-issue it in app_start().
+ *
+ * 250 MHz is chosen deliberately: clk_peri is retied to clk_sys, and the TFT
+ * SPI baud is clk_peri / (even divisor).  250 MHz divides cleanly to 62.5 MHz
+ * (250/4) which is the intended TFT SPI rate; 276 MHz would only reach 46 MHz
+ * (276/6, since 276/4 = 69 MHz exceeds the 62.5 MHz request). */
+#ifndef DOOM_SYS_OVERCLOCK
+#define DOOM_SYS_OVERCLOCK 1
+#endif
+
+#ifndef DOOM_SYS_CLOCK_KHZ
+#define DOOM_SYS_CLOCK_KHZ 250000u
+#endif
+
 /* TFT/display */
 #ifndef DOOM_HAL_TFT_SCK_PIN
 #define DOOM_HAL_TFT_SCK_PIN 18u
@@ -271,11 +289,18 @@
 
 // Enables queued wall-column rendering and the staged core1 column helper.
 #ifndef DOOM_DUAL_CORE_COLUMNS
-#define DOOM_DUAL_CORE_COLUMNS 1
+#define DOOM_DUAL_CORE_COLUMNS 0
 #endif
 
 #if DOOM_DUAL_CORE_COLUMNS
 // Decoded compact-column cache slots in the dual-core memory budget.
+// NOTE: the cache is partitioned per core (SLOTS / CACHE_CORES), so with 2 cores
+// only SLOTS/2 slots serve each core.  Growing this is tempting (85% miss rate)
+// but each slot is HAL_PATCH_COLUMN_CACHE_HEIGHT bytes and the Doom zone is
+// malloc'd from the SAME remaining SRAM: 256 slots (+29 KB) starved the zone
+// ("Unable to allocate ... for zone") and crashed.  There is simply not enough
+// RAM to brute-force this cache -- the real fix is a faster decode path (RAM
+// placement + interpolators), copied from the original pd_render.cpp.
 #ifndef HAL_PATCH_COLUMN_CACHE_SLOTS
 #define HAL_PATCH_COLUMN_CACHE_SLOTS 32u
 #endif

@@ -310,6 +310,29 @@ void DoomRenderDiag_StartRun(void)
     s_render_diag.last_yh = -1;
 }
 
+// Authoritative build-config proof, straight from the linked binary: reports the
+// REAL compiled sizes (sizeof), not just macro values, so the boot log removes any
+// doubt about which column-render variant is actually running.
+void DoomHAL_LogRenderConfig(void)
+{
+    deb("[boot] rendercfg: DUAL_CORE=%d ASYNC_PLANES=%d SYNC_FLUSH=%d "
+        "slots=%u (%u/core) height=%uB cache_bytes=%u tall=%u/%uB colqueue_bytes=%u",
+        (int)DOOM_DUAL_CORE_COLUMNS,
+        (int)DOOM_RENDER_ASYNC_PLANES,
+        (int)DOOM_VIDEO_SYNC_FLUSH,
+        (unsigned)HAL_PATCH_COLUMN_CACHE_SLOTS,
+        (unsigned)(HAL_PATCH_COLUMN_CACHE_SLOTS / HAL_PATCH_COLUMN_CACHE_CORES),
+        (unsigned)HAL_PATCH_COLUMN_CACHE_HEIGHT,
+        (unsigned)sizeof(s_patch_column_cache),
+        (unsigned)HAL_PATCH_TALL_CACHE_SLOTS,
+        (unsigned)HAL_PATCH_TALL_CACHE_HEIGHT,
+#if DOOM_DUAL_CORE_COLUMNS
+        (unsigned)sizeof(s_col_queue));
+#else
+        0u);
+#endif
+}
+
 void DoomRenderDiag_MarkPhase(uint8_t phase)
 {
     render_diag_touch(phase);

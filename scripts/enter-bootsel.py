@@ -62,6 +62,7 @@ def read_preferred_port(settings_path):
 
 def list_candidate_ports(preferred):
     ports = []
+    fallback_ports = []
 
     if preferred and os.path.exists(preferred):
         ports.append(preferred)
@@ -77,8 +78,10 @@ def list_candidate_ports(preferred):
         if uid in PICO_USB_IDS or uid.startswith("2e8a:"):
             if port.device not in ports:
                 ports.append(port.device)
+        elif port.device not in ports and port.device not in fallback_ports:
+            fallback_ports.append(port.device)
 
-    return ports
+    return ports or fallback_ports
 
 
 def is_disconnect_error(exc):
