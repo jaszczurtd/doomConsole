@@ -8,14 +8,16 @@ set(ARDUINO_FQBN "rp2040:rp2040:rpipico:usbstack=tinyusb" CACHE STRING "Arduino 
 set(ARDUINO_SKETCHBOOK "" CACHE PATH "Arduino sketchbook path")
 set(ARDUINO_UPLOAD_PORT "" CACHE STRING "Arduino upload port")
 set(ARDUINO_VERBOSE OFF CACHE BOOL "Enable verbose Arduino CLI output")
+set(JH_USB_MANUFACTURER "" CACHE STRING "USB manufacturer string passed to Arduino-Pico")
+set(JH_USB_PRODUCT "" CACHE STRING "USB product string passed to Arduino-Pico")
 set(DOOM_BOOT_PROBE_ONLY OFF CACHE BOOL "Build a minimal app_start/app_task0 smoke-test firmware")
 set(DOOM_DUAL_CORE_COLUMNS "0" CACHE STRING "Enable queued wall-column rendering path for staged dual-core work")
 set(DOOM_RENDER_ASYNC_PLANES "0" CACHE STRING "Render visplanes on core1 concurrently with core0 columns/sprites")
 set(DOOM_VIDEO_SYNC_FLUSH "0" CACHE STRING "Diagnostic: flush the TFT synchronously on core0 instead of async on core1")
 set(DOOM_TFT_PANEL "ili9341" CACHE STRING "TFT panel driver: ili9341 or st7796s (ST7796S is RP2350-only)")
 set(DOOM_HIGHRES_SCENE "0" CACHE STRING "Render the 3D scene at the full TFT panel resolution (ILI9341 320x240, ST7796S 480x320)")
-set(DOOM_SYS_CLOCK_KHZ "250000" CACHE STRING "System clock (kHz) applied at boot; configure-cmake.sh derives it per target (RP2040 250000 / RP2350 300000)")
-set(JH_ILI9341_SPI_DEFAULT_HZ "41666666" CACHE STRING "Requested TFT SPI clock (Hz); actual = clk_peri / even divisor. configure-cmake.sh derives it per target")
+set(DOOM_SYS_CLOCK_KHZ "250000" CACHE STRING "System clock (kHz) applied at boot; the VS Code manifest should set the target-specific value")
+set(JH_ILI9341_SPI_DEFAULT_HZ "41666666" CACHE STRING "Requested TFT SPI clock (Hz); actual = clk_peri / even divisor")
 set(ARDUINO_RP2040_PLATFORM_PATH "$ENV{HOME}/.arduino15/packages/rp2040/hardware/rp2040/5.4.0" CACHE PATH "Arduino-Pico platform path")
 set(ARDUINO_TINYUSB_SRC "${ARDUINO_RP2040_PLATFORM_PATH}/libraries/Adafruit_TinyUSB_Arduino/src" CACHE PATH "Adafruit TinyUSB source include path")
 set(JH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../libraries/JaszczurHAL" CACHE PATH "JaszczurHAL library root")
@@ -437,6 +439,13 @@ set(ARDUINO_COMMON_ARGS
     --build-property "compiler.c.extra_flags=${DOOM_PORT_C_COMPILER_FLAGS_STR}"
     --warnings all
 )
+
+if(JH_USB_MANUFACTURER AND JH_USB_PRODUCT)
+    list(APPEND ARDUINO_COMMON_ARGS
+        --build-property "build.usb_manufacturer=\"${JH_USB_MANUFACTURER}\""
+        --build-property "build.usb_product=\"${JH_USB_PRODUCT}\""
+    )
+endif()
 
 if(ARDUINO_VERBOSE)
     list(APPEND ARDUINO_COMMON_ARGS --verbose)

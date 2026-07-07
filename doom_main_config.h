@@ -43,9 +43,9 @@
  * boots low and the port's own set_sys_clock_khz() is compiled out (see
  * src/i_main.c, gated by !JASZCZURHAL_PORT), so we re-issue it in app_start().
  *
- * The authoritative value is normally passed as -D by scripts/configure-cmake.sh,
- * which derives it from the target in the FQBN (RP2040 250 MHz / RP2350 300 MHz).
- * These are only fallbacks for builds that bypass that script.  The value is
+ * The authoritative value is normally passed as -D from
+ * .vscode/jaszczurhal.project.json through jh-vscode. These are only fallbacks
+ * for builds that bypass that manifest-driven flow. The value is
  * chosen so clk_peri (= clk_sys) divides cleanly to the TFT SPI request by 6:
  * 250/6 = 41.67 MHz, 300/6 = 50 MHz. */
 #ifndef DOOM_SYS_OVERCLOCK

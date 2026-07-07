@@ -50,14 +50,14 @@ The active platform code lives mostly in:
 
 ## Current Status
 
-The port builds and runs as RP2040 firmware.  The renderer is functional but
+The port builds and runs as RP2040/RP2350 firmware. The renderer is functional but
 still performance-oriented work in progress.  PCB is not ready yet. 
-Current measurements show the
-main cost in wall/BSP column rendering.
+Current measurements show the main cost in wall/BSP column rendering.
 
 Important current traits:
 
-- Tested configuration uses Waveshare RP2040 Plus / 4 MB style target.
+- Tested configuration uses Waveshare RP2040 Plus / 4 MB style target, and 
+  Raspberry pi pico2 (RP2350).
 - The default WHD/WHX payload address is `0x10200000`.
 - The active build is tuned for a TFT display and HAL GPIO/button input.
 
@@ -80,25 +80,37 @@ Most values can still be overridden from CMake/compiler definitions before
 
 ### VS Code Build Options
 
-The helper scripts read the active board and display options from
-`.vscode/settings.json`.  The most useful Doom-specific keys are:
+VS Code uses the shared JaszczurHAL entrypoint:
 
-- `doom.tftPanel` - display driver, either `ili9341` or `st7796s`.
-- `doom.highresScene` - render the scene at the full panel resolution:
+```text
+../libraries/JaszczurHAL/vscode/entry/jh-vscode
+```
+
+The firmware module contract lives in `.vscode/jaszczurhal.project.json`.
+That manifest is the source of truth for the FQBN, generated CMake build
+directory, USB identity, artifacts, and Doom-specific CMake cache values.
+The most useful Doom CMake cache keys are:
+
+- `DOOM_TFT_PANEL` - display driver, either `ili9341` or `st7796s`.
+- `DOOM_HIGHRES_SCENE` - render the scene at the full panel resolution:
   `320x240` on ILI9341 or `480x320` on ST7796S.  The ST7796S path is supported
   only for RP2350/Pico 2.
-- `doom.tftSpiHz` - optional SPI clock request.  If omitted, the scripts choose
-  a board/panel default.
-- `doom.sysClockKhz` - optional RP2040/RP2350 system clock request.
-- `doom.dualCoreColumns`, `doom.asyncPlanes`, `doom.videoSyncFlush` -
-  renderer/flush experiments; the default active values are conservative.
+- `JH_ILI9341_SPI_DEFAULT_HZ` - requested TFT SPI clock.
+- `DOOM_SYS_CLOCK_KHZ` - RP2040/RP2350 system clock request.
+- `DOOM_DUAL_CORE_COLUMNS`, `DOOM_RENDER_ASYNC_PLANES`,
+  `DOOM_VIDEO_SYNC_FLUSH` - renderer/flush experiments; the default active
+  values are conservative.
 
 To use the classic ILI9341 path, keep highres disabled:
 
 ```json
 {
-    "doom.tftPanel": "ili9341",
-    "doom.highresScene": false
+    "cmake": {
+        "cache": {
+            "DOOM_TFT_PANEL": "ili9341",
+            "DOOM_HIGHRES_SCENE": "0"
+        }
+    }
 }
 ```
 
@@ -107,7 +119,7 @@ the FQBN can be, for example:
 
 ```json
 {
-    "arduino.fqbn": "rp2040:rp2040:rpipico:flash=2097152_524288,usbstack=tinyusb"
+    "fqbn": "rp2040:rp2040:rpipico:flash=2097152_524288,usbstack=tinyusb"
 }
 ```
 
@@ -116,8 +128,12 @@ ILI9341 driver:
 
 ```json
 {
-    "doom.tftPanel": "ili9341",
-    "doom.highresScene": true
+    "cmake": {
+        "cache": {
+            "DOOM_TFT_PANEL": "ili9341",
+            "DOOM_HIGHRES_SCENE": "1"
+        }
+    }
 }
 ```
 
@@ -126,20 +142,23 @@ enable highres:
 
 ```json
 {
-    "arduino.fqbn": "rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb",
-    "doom.tftPanel": "st7796s",
-    "doom.highresScene": true
+    "fqbn": "rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb",
+    "cmake": {
+        "cache": {
+            "DOOM_TFT_PANEL": "st7796s",
+            "DOOM_HIGHRES_SCENE": "1"
+        }
+    }
 }
 ```
 
 `st7796s` is intentionally rejected for RP2040 targets.  The ST7796S full-panel
 framebuffer and flush buffers are RP2350-only.
 
-After changing these settings, regenerate the CMake cache and rebuild:
+After changing the manifest, regenerate the CMake cache and rebuild:
 
 ```bash
-./scripts/configure-cmake.sh
-cmake --build .build/cmake --target firmware -j2
+../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project .
 ```
 
 ## Build Requirements
@@ -160,27 +179,24 @@ JH_ROOT=../libraries/JaszczurHAL
 ARDUINO_RP2040_PLATFORM_PATH=$HOME/.arduino15/packages/rp2040/hardware/rp2040/5.4.0
 ```
 
-The repository also contains VS Code tasks/scripts for configuring, building,
-uploading, and monitoring the board.
-
 ## Building Firmware
 
 Configure (optional):
 
 ```bash
-cmake -S . -B .build/cmake -DDOOM_DUAL_CORE_COLUMNS=1
+../libraries/JaszczurHAL/vscode/entry/jh-vscode config-dump --project .
 ```
 
 Build:
 
 ```bash
-cmake --build .build/cmake --target firmware
+../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project .
 ```
 
 Generate/update compile commands for editor tooling:
 
 ```bash
-cmake --build .build/cmake --target firmware_compile_db
+../libraries/JaszczurHAL/vscode/entry/jh-vscode refresh-intellisense --project .
 ```
 
 Other CMake targets:
@@ -198,21 +214,31 @@ The generated outputs are placed under `.build/`, including:
 
 ## Board And Upload Flow
 
-Board selection is controlled by the Arduino FQBN.  The current VS Code settings (ctrl-shift-2 or run task Build:Build) use a Waveshare RP2040 Plus 4 MB configuration similar to:
+Board selection is controlled by the Arduino FQBN in
+`.vscode/jaszczurhal.project.json`.  The current VS Code tasks use a Pico 2 W
+configuration:
 
 ```text
-rp2040:rp2040:waveshare_rp2040_plus:flash=4194304_0,freq=276,usbstack=tinyusb
+rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb
 ```
 
 Firmware UF2 upload and WHX/WHD payload upload are intentionally separate.
 
-Firmware upload helpers live in `scripts/`, including:
+VS Code firmware tasks:
 
-- `scripts/upload-uf2.sh`
-- `scripts/upload-serial.sh`
-- `scripts/enter-bootsel.py`
+- `Project: Build`
+- `Project: Build (Debug)`
+- `Project: Upload` - verified serial upload through `jh-vscode`; if no serial
+  port is configured and exactly one BOOTSEL drive is visible, it falls back to
+  UF2.
+- `Project: Upload (UF2 / BOOTSEL)` - builds and copies `.build/firmware.uf2`
+  to the mounted BOOTSEL drive.
+- `Project: Serial Monitor`
+- `Project: Refresh IntelliSense`
+- `Project: Upload WHX Payload` - runs the picotool WHX helper below.
 
-Payload upload helper:
+The WHX payload upload remains a separate picotool flow and expects the board
+to already be in BOOTSEL mode:
 
 ```bash
 sudo scripts/upload-whx-picotool.sh
@@ -230,7 +256,7 @@ This address is controlled by `DOOM_WHD_FLASH_ADDR`.
 
 Like `rp2040-doom`, this port does not run directly from a normal WAD file on
 the device.  WAD data must be converted to the compact WHD/WHX format used by
-the RP2040 renderer/data path.
+the RP2040/2350 renderer/data path.
 
 The generator code is retained in:
 
@@ -273,7 +299,7 @@ CMakeLists.txt           Arduino-Pico/JaszczurHAL firmware build
 src/jaszczurhal/         active platform backends
 src/doom/                Doom game and renderer code
 src/whd_gen/             WHD/WHX conversion tooling
-scripts/                 configure/build/upload/monitor helpers
+scripts/                 WHX/picotool payload helper
 port_issues.md          current performance notes and next steps
 _unused/                 files removed from the active port path
 ```

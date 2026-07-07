@@ -1,0 +1,38 @@
+{
+    "$schema": "../../libraries/JaszczurHAL/vscode/schema/jh_vscode_project.schema.json",
+    "project": "doomConsole",
+    "module": "rp2040_doom",
+    "toolchain": "cmake",
+    "fqbn": "rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb",
+    "buildDir": "${project}/.build",
+    "cmakeBuildDir": "${project}/.build/cmake",
+    "cmake": {
+        "cache": {
+            "DOOM_BOOT_PROBE_ONLY": false,
+            "DOOM_DUAL_CORE_COLUMNS": "0",
+            "DOOM_RENDER_ASYNC_PLANES": "0",
+            "DOOM_VIDEO_SYNC_FLUSH": "0",
+            "DOOM_TFT_PANEL": "ili9341",
+            "DOOM_HIGHRES_SCENE": "1",
+            "DOOM_SYS_CLOCK_KHZ": "300000",
+            "JH_ILI9341_SPI_DEFAULT_HZ": "50000000"
+        },
+        "targets": {
+            "build": "firmware",
+            "buildDebug": "firmware_debug",
+            "upload": "firmware_upload",
+            "compileDb": "firmware_compile_db"
+        }
+    },
+    "identity": {
+        "enabled": true,
+        "usbManufacturer": "Jaszczur",
+        "usbProduct": "Doom Console",
+        "byIdHint": "Doom_Console"
+    },
+    "artifacts": {
+        "elf": "${buildDir}/firmware.elf",
+        "uf2": "${buildDir}/firmware.uf2",
+        "compileCommands": "${buildDir}/compile_commands_patched.json"
+    }
+}
