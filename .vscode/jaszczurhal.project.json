@@ -7,7 +7,11 @@
     "buildDir": "${project}/.build",
     "cmakeBuildDir": "${project}/.build/cmake",
     "cmake": {
+        "sourceDir": "${project}/../libraries/JaszczurHAL/cmake/jh_firmware_project",
         "cache": {
+            "JH_TARGET": "rp2040",
+            "JH_PROJECT_DIR": "${project}",
+            "JH_PROJECT_RECIPE": "${project}/CMakeLists.txt",
             "DOOM_BOOT_PROBE_ONLY": false,
             "DOOM_DUAL_CORE_COLUMNS": "0",
             "DOOM_RENDER_ASYNC_PLANES": "0",

@@ -60,3 +60,6 @@ GTAGS
 *.wad
 *.whd
 /cmake-*/
+
+# jh-vscode user-local target, board and serial-port selection
+.vscode/jaszczurhal.local.json
