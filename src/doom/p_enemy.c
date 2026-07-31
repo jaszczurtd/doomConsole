@@ -1783,6 +1783,7 @@ A_OpenShotgun2
 ( player_t*	player,
   pspdef_t*	psp )
 {
+    (void)psp;
     S_StartObjSound (player->mo, sfx_dbopn);
 }
 
@@ -1791,6 +1792,7 @@ A_LoadShotgun2
 ( player_t*	player,
   pspdef_t*	psp )
 {
+    (void)psp;
     S_StartObjSound (player->mo, sfx_dbload);
 }
 
@@ -1816,6 +1818,7 @@ static isb_int8_t 	braintargeton = 0;
 
 void A_BrainAwake (mobj_t* mo)
 {
+    (void)mo;
     thinker_t*	thinker;
     mobj_t*	m;
 	
@@ -1845,6 +1848,7 @@ void A_BrainAwake (mobj_t* mo)
 
 void A_BrainPain (mobj_t*	mo)
 {
+    (void)mo;
     S_StartSound (NULL,sfx_bospn);
 }
 
@@ -1898,6 +1902,7 @@ void A_BrainExplode (mobj_t* mo)
 
 void A_BrainDie (mobj_t*	mo)
 {
+    (void)mo;
     G_ExitLevel ();
 }
 

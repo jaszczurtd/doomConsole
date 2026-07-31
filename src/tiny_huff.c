@@ -152,6 +152,8 @@ uint16_t *th_create_decoder_16(uint16_t *buffer, const uint8_t *symbols_and_leng
 }
 
 uint16_t *th_read_simple_decoder(th_bit_input *bi, uint16_t *buffer, uint buffer_size, uint8_t *tmp_buf, uint tmp_buf_size) {
+    (void)buffer_size;
+    (void)tmp_buf_size;
     int non_empty = th_bit(bi);
     if (!non_empty) {
 #if DUMP

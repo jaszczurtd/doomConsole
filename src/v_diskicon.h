@@ -31,8 +31,13 @@ extern void V_BeginRead(size_t nbytes);
 extern void V_DrawDiskIcon(void);
 extern void V_RestoreDiskBackground(void);
 #else
-static inline void V_EnableLoadingDisk(const char *lump_name, int xoffs, int yoffs) {}
-static inline void V_BeginRead(size_t nbytes) {}
+static inline void V_EnableLoadingDisk(const char *lump_name, int xoffs, int yoffs)
+{
+    (void)lump_name;
+    (void)xoffs;
+    (void)yoffs;
+}
+static inline void V_BeginRead(size_t nbytes) { (void)nbytes; }
 static inline void V_DrawDiskIcon(void) {}
 static inline void V_RestoreDiskBackground(void) {}
 #endif

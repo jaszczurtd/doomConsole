@@ -1043,6 +1043,7 @@ void M_DrawSound(void)
 
 void M_Sound(int choice)
 {
+    (void)choice;
     M_SetupNextMenu(&SoundDef);
 }
 
@@ -1106,6 +1107,7 @@ void M_DrawNewGame(void)
 
 void M_NewGame(int choice)
 {
+    (void)choice;
     if (netgame && !demoplayback)
     {
 	M_StartMessage(DEH_String(NEWGAME),NULL,false);
@@ -1228,6 +1230,7 @@ void M_DrawOptions(void)
 
 void M_Options(int choice)
 {
+    (void)choice;
     M_SetupNextMenu(&OptionsDef);
 }
 
@@ -1550,6 +1553,7 @@ static const char *M_SelectEndMessage(void)
 
 void M_QuitDOOM(int choice)
 {
+    (void)choice;
 #if !DOOM_TINY
     DEH_snprintf(endstring, sizeof(endstring), "%s\n\n" DOSY,
                  DEH_String(M_SelectEndMessage()));

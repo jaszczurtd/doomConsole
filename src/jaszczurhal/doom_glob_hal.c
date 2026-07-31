@@ -348,17 +348,21 @@ const char *I_NextGlob(glob_t *glob)
 
 glob_t *I_StartGlob(const char *directory, const char *glob, int flags)
 {
+    (void)directory;
+    (void)glob;
+    (void)flags;
     return NULL;
 }
 
 void I_EndGlob(glob_t *glob)
 {
+    (void)glob;
 }
 
 const char *I_NextGlob(glob_t *glob)
 {
+    (void)glob;
     return "";
 }
 
 #endif /* #ifdef NO_DIRENT_IMPLEMENTATION */
-

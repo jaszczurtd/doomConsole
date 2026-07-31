@@ -1,14 +1,15 @@
 # DoomConsole
 
-DoomConsole is a JaszczurHAL/Arduino-Pico firmware port of Doom for RP2040
-boards.  It is based on Graham Sanderson's
+DoomConsole is a JaszczurHAL firmware port of Doom for RP2040 and RP2350
+boards. It is based on Graham Sanderson's
 [kilograham/rp2040-doom](https://github.com/kilograham/rp2040-doom), which in
 turn is derived from [Chocolate Doom](https://github.com/chocolate-doom/chocolate-doom).
 
-This repository is no longer a stock `rp2040-doom` tree.  The current active
-port replaces the original Pico SDK VGA/I2S/TinyUSB backend with a JaszczurHAL
-application model, TFT output, HAL-backed input/audio/storage glue, and a
-single CMake flow that builds through Arduino-Pico.
+This repository is no longer a stock `rp2040-doom` tree. The current active
+port replaces the original application-specific VGA, I2S, and TinyUSB platform
+layer with the JaszczurHAL application model, TFT output, and HAL-backed
+input, audio, and storage glue. Firmware builds through JaszczurHAL's native
+RP dispatcher and the official Pico SDK.
 
 
 RP2040 ILI9341 320x200:
@@ -29,7 +30,8 @@ Doom.  DoomConsole keeps that core idea and much of the renderer/data-format
 work, but changes the platform layer:
 
 - Application entry is JaszczurHAL-style `app_start()`, `app_task0()`, `app_task1()`.
-- Firmware is built by CMake.
+- Firmware is built by CMake against the official Pico SDK through
+  JaszczurHAL's native RP build.
 - Video output is a 320x200 indexed Doom framebuffer converted to RGB565 and
   streamed to a HAL TFT display.
 - Core1 is used for asynchronous TFT flush and experimental renderer helper
@@ -87,8 +89,9 @@ VS Code uses the shared JaszczurHAL entrypoint:
 ```
 
 The firmware module contract lives in `.vscode/jaszczurhal.project.json`.
-That manifest is the source of truth for the FQBN, generated CMake build
-directory, USB identity, artifacts, and Doom-specific CMake cache values.
+That manifest is the source of truth for the target, board profile, generated
+CMake build directory, USB identity, artifacts, and Doom-specific CMake cache
+values.
 The most useful Doom CMake cache keys are:
 
 - `DOOM_TFT_PANEL` - display driver, either `ili9341` or `st7796s`.
@@ -114,12 +117,13 @@ To use the classic ILI9341 path, keep highres disabled:
 }
 ```
 
-This works on RP2040 and RP2350 builds.  For a regular RP2040 Pico-style board
-the FQBN can be, for example:
+This works on RP2040 and RP2350 builds. For a Raspberry Pi Pico, select the
+native RP2040 target and its `pico` board profile:
 
 ```json
 {
-    "fqbn": "rp2040:rp2040:rpipico:flash=2097152_524288,usbstack=tinyusb"
+    "target": "rp2040",
+    "board": "pico"
 }
 ```
 
@@ -142,7 +146,8 @@ enable highres:
 
 ```json
 {
-    "fqbn": "rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb",
+    "target": "rp2350-arm",
+    "board": "pico2w",
     "cmake": {
         "cache": {
             "DOOM_TFT_PANEL": "st7796s",
@@ -166,18 +171,14 @@ After changing the manifest, regenerate the CMake cache and rebuild:
 Expected local tools:
 
 - `cmake`
-- `arduino-cli`
-- [Arduino-Pico platform](https://github.com/earlephilhower/arduino-pico), currently configured for 5.4.0
 - [JaszczurHAL](https://github.com/jaszczurtd/JaszczurHAL) checked out at `../libraries/JaszczurHAL` by default
 
-Note: JaszczurHAL's setup (./runmefirst.sh) will provide all expected tools and dependencies automatically.
+JaszczurHAL's `./runmefirst.sh` prepares the pinned Pico SDK, RP toolchains,
+picotool, and the remaining managed dependencies required by the build.
 
-The default CMake cache expects:
-
-```text
-JH_ROOT=../libraries/JaszczurHAL
-ARDUINO_RP2040_PLATFORM_PATH=$HOME/.arduino15/packages/rp2040/hardware/rp2040/5.4.0
-```
+The tracked editor configuration points `jaszczurhal.root` at
+`../libraries/JaszczurHAL`; override that local setting when the checkout uses
+a different path.
 
 ## Building Firmware
 
@@ -201,8 +202,8 @@ Generate/update compile commands for editor tooling:
 
 Other CMake targets:
 
-- `firmware_debug` - verbose/debug arduino-pico compile variant.
-- `firmware_upload` - arduino-pico upload target.
+- `firmware_debug` - debug build target used by the shared workflow.
+- `firmware_upload` - firmware build prerequisite used by the upload workflow.
 - `firmware_compile_db` - compile database refresh target.
 
 The generated outputs are placed under `.build/`, including:
@@ -210,17 +211,23 @@ The generated outputs are placed under `.build/`, including:
 - `.build/firmware.elf`
 - `.build/firmware.bin`
 - `.build/firmware.uf2`
-- `.build/firmware.map`
+
+Detailed linker output, including `firmware.elf.map`, remains in the resolved
+target/board directory below `.build/cmake/`.
 
 ## Board And Upload Flow
 
-Board selection is controlled by the Arduino FQBN in
-`.vscode/jaszczurhal.project.json`.  The current VS Code tasks use a Pico 2 W
-configuration:
+Board selection uses the JaszczurHAL target and board profile in
+`.vscode/jaszczurhal.project.json`, with optional local overrides stored in
+`.vscode/jaszczurhal.local.json`. The tracked configuration selects:
 
 ```text
-rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb
+target: rp2350-arm
+board:  pico2w
 ```
+
+Use the `Project: Select board` task or pass `--target` and `--board` to
+`jh-vscode` to select another supported RP profile.
 
 Firmware UF2 upload and WHX/WHD payload upload are intentionally separate.
 
@@ -295,7 +302,7 @@ the main optimization target remains BSP/wall column rendering and safe core1 of
 ```text
 doom_main_config.h       central port configuration
 hal_project_config.h     JaszczurHAL project config wrapper
-CMakeLists.txt           Arduino-Pico/JaszczurHAL firmware build
+CMakeLists.txt           native Pico SDK/JaszczurHAL firmware recipe
 src/jaszczurhal/         active platform backends
 src/doom/                Doom game and renderer code
 src/whd_gen/             WHD/WHX conversion tooling

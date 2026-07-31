@@ -736,6 +736,7 @@ void ST_Ticker (void)
 }
 
 void ST_FpsDrawer(int fps) {
+    (void)fps;
 #if USE_FPS
     if (show_fps) {
         static uint8_t ms[16];
@@ -986,6 +987,8 @@ void ST_loadData(void)
 
 static void ST_unloadCallback(vpatchname_t lumpname, vpatch_handle_small_t *variable)
 {
+    (void)lumpname;
+    (void)variable;
 #if !DOOM_TINY
     W_ReleaseLumpName(lumpname);
     *variable = 0;

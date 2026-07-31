@@ -3,13 +3,13 @@
     "project": "doomConsole",
     "module": "rp2040_doom",
     "toolchain": "cmake",
-    "fqbn": "rp2040:rp2040:rpipico2w:flash=4194304_2097152,usbstack=tinyusb",
+    "target": "rp2350-arm",
+    "board": "pico2w",
     "buildDir": "${project}/.build",
     "cmakeBuildDir": "${project}/.build/cmake",
     "cmake": {
         "sourceDir": "${project}/../libraries/JaszczurHAL/cmake/jh_firmware_project",
         "cache": {
-            "JH_TARGET": "rp2040",
             "JH_PROJECT_DIR": "${project}",
             "JH_PROJECT_RECIPE": "${project}/CMakeLists.txt",
             "DOOM_BOOT_PROBE_ONLY": false,

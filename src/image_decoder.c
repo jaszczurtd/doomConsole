@@ -15,6 +15,8 @@
 #endif
 
 uint16_t *__not_in_flash_func(read_raw_pixels_decoder)(th_bit_input *bi, uint16_t *buffer, uint buffer_size, uint8_t *tmp_buf, uint tmp_buf_size) {
+    (void)buffer_size;
+    (void)tmp_buf_size;
     uint min_cl = th_read_bits(bi, 4);
     uint max_cl = th_read_bits(bi, 4);
     uint bit_count = 32 - __builtin_clz(max_cl - min_cl);
@@ -43,6 +45,8 @@ uint16_t *__not_in_flash_func(read_raw_pixels_decoder)(th_bit_input *bi, uint16_
 }
 
 uint16_t *__not_in_flash_func(read_raw_pixels_decoder_c3)(th_bit_input *bi, uint16_t *buffer, uint buffer_size, uint8_t *tmp_buf, uint tmp_buf_size) {
+    (void)buffer_size;
+    (void)tmp_buf_size;
     uint min_cl = th_read_bits(bi, 4);
     uint max_cl = th_read_bits(bi, 4);
 //    printf("  Code length %d->%d\n", min_cl, max_cl);

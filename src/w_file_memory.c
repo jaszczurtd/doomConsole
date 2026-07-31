@@ -75,6 +75,7 @@ static wad_file_t fileo = {
 
 static wad_file_t *W_Memory_OpenFile(const char *path)
 {
+    (void)path;
 #if JASZCZURHAL_PORT
     whd_map_base = DoomStorage_WHDBase();
     fileo.mapped = whd_map_base;
@@ -107,6 +108,7 @@ static wad_file_t *W_Memory_OpenFile(const char *path)
 
 static void W_Memory_CloseFile(wad_file_t *wad)
 {
+    (void)wad;
 }
 
 // Read data from the specified position in the file into the

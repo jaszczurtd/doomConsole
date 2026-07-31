@@ -66,11 +66,12 @@ This layout requires at least 4 MB of physical flash. The included
 `doom1.whx` is about 1.8 MB, so it cannot share the original 2 MB Pico flash
 with the current firmware.
 
-For the RP2040-Plus 4 MB verification build, the Arduino-Pico board profile is
-`rp2040:rp2040:generic:flash=4194304_2097152,usbstack=tinyusb`. Arduino-Pico
-starts the nominal 2 MB filesystem partition at `0x101ff000`; this port leaves
-the first 4 KB unused and stores the raw WHD/WHDX payload from `0x10200000`.
-Do not format or mount that partition during hardware verification.
+For the RP2040-Plus 4 MB verification build, select JaszczurHAL target
+`rp2040` and board profile `rp2040-plus-4mb`. The profile selects the official
+Pico SDK board definition and verifies that the target has exactly 4 MB of
+flash. The raw WHD/WHDX payload occupies the region from `0x10200000` to the
+end of that flash. Do not configure a filesystem, OTA slot, or another
+flash-backed component over this region.
 
 Hardware bring-up sequence:
 
@@ -78,13 +79,11 @@ Hardware bring-up sequence:
 2. Start the persistent serial monitor (`Ctrl+Shift+3`) if boot diagnostics are
    needed. The firmware opens USB CDC at `115200` and holds for 8 seconds before
    entering Doom, printing `[boot]` and `[video]` diagnostics.
-3. Run VS Code task `Build: Upload` (`Ctrl+Shift+2`). It builds and copies
-   `.build/firmware-with-whx.uf2`, a combined UF2 containing both
-   `.build/firmware.uf2` and `.build/doom1.whx.uf2`.
-   The upload script first looks for a mounted `RPI-RP2` drive, then tries to
-   mount it through `udisksctl`, and finally falls back to direct
-   `picotool load` if the USB BOOTSEL device is visible but no drive is
-   mounted.
+3. Run `Project: Upload (UF2 / BOOTSEL)` to build and copy
+   `.build/firmware.uf2` to the BOOTSEL drive.
+4. Put the board in BOOTSEL mode again and run `Project: Upload WHX Payload`.
+   The task writes `doom1.whx` at `0x10200000` with picotool, verifies the
+   payload, and reboots the board.
 
 The active RP2040-Plus verification build defines `WHD_SUPER_TINY=1`, so the
 payload magic expected at `0x10200000` is `IWHX`.
@@ -92,8 +91,7 @@ payload magic expected at `0x10200000` is `IWHX`.
 Manual fallback:
 
 1. Flash firmware UF2 from `.build/firmware.uf2`.
-2. Flash the WHX payload UF2 from `.build/doom1.whx.uf2`, or load the raw
-   payload with:
+2. Load the raw WHX payload with:
 
    ```sh
    picotool load --ignore-partitions -v -t bin doom1.whx -o 0x10200000

@@ -1018,6 +1018,8 @@ P_SetupLevel
   int		playermask,
   skill_t	skill)
 {
+    (void)playermask;
+    (void)skill;
     int		i;
     char	lumpname[9];
     int		lumpnum;
@@ -1132,6 +1134,5 @@ void P_Init (void)
     P_InitPicAnims ();
     R_InitSprites ();
 }
-
 
 

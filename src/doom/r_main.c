@@ -990,6 +990,8 @@ void
 R_SetViewSize
         (int blocks,
          int detail) {
+    (void)blocks;
+    (void)detail;
     setsizeneeded = true;
 #if !DOOM_TINY
     setblocks = blocks;

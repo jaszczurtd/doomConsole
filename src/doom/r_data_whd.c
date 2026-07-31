@@ -109,6 +109,10 @@ R_DrawColumnInCache
           int		originy,
           int		cacheheight )
 {
+    (void)patch;
+    (void)cache;
+    (void)originy;
+    (void)cacheheight;
     I_Error("no can do");
 }
 
@@ -122,6 +126,7 @@ R_DrawColumnInCache
 //
 void R_GenerateComposite (int texnum)
 {
+    (void)texnum;
 }
 
 //
@@ -129,6 +134,7 @@ void R_GenerateComposite (int texnum)
 //
 void R_GenerateLookup (int texnum)
 {
+    (void)texnum;
 }
 
 void reset_framedrawables(void) {

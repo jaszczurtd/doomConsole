@@ -718,6 +718,7 @@ void W_Reload(void)
 
 const char *W_WadNameForLump(const lumpinfo_t *lump)
 {
+    (void)lump;
 #if !USE_SINGLE_IWAD
 	return M_BaseName(lump->wad_file->path);
 #else
@@ -727,6 +728,7 @@ const char *W_WadNameForLump(const lumpinfo_t *lump)
 
 boolean W_IsIWADLump(const lumpinfo_t *lump)
 {
+    (void)lump;
 #if !USE_SINGLE_IWAD
 	return lump->wad_file == lumpinfo[0]->wad_file;
 #else

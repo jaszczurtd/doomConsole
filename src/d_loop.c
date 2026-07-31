@@ -805,6 +805,7 @@ static boolean IsDemoFile(int lumpnum) {
 
     return result;
 #else
+    (void)lumpnum;
     return false;
 #endif
 }
@@ -839,6 +840,10 @@ boolean D_NonVanillaPlayback(boolean conditional, int lumpnum,
 void D_StartNetGame(net_gamesettings_t *settings,
                     netgame_startup_callback_t callback) {
     int i;
+
+#if NO_USE_NET
+    (void)callback;
+#endif
 
     offsetms = 0;
     recvtic = 0;

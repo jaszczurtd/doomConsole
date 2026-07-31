@@ -206,6 +206,7 @@ boolean W_ParseCommandLine(void)
 // Load all WAD files from the given directory.
 void W_AutoLoadWADs(const char *path)
 {
+    (void)path;
 #if !USE_SINGLE_IWAD
     glob_t *glob;
     const char *filename;
@@ -269,4 +270,3 @@ void W_CheckCorrectIWAD(GameMission_t mission)
         }
     }
 }
-

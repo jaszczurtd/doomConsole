@@ -243,6 +243,7 @@ static int saveg_read_low_zeros() {
 typedef int (*saveg_reader)();
 
 static uint saveg_read_maybe(uint32_t static_val, saveg_reader reader, const char *desc) {
+    (void)desc;
     if (saveg_read_bit()) {
         uint rc = reader();
         xprintf("  %s explicit %08x\n", desc, (int)rc);
@@ -270,6 +271,7 @@ static void saveg_write_low_zeros(uint32_t value) {
 typedef void (*saveg_writer)(uint32_t);
 
 static void saveg_write_maybe(uint32_t val, uint32_t static_val, saveg_writer writer, const char *desc) {
+    (void)desc;
     if (val != static_val) {
         xprintf("  %s explicit %08x %08x\n", desc, (int)val, (int)static_val);
         saveg_write_bit(1);
@@ -340,6 +342,7 @@ static void *saveg_readp(void)
 
 static void saveg_writep(const void *p)
 {
+    (void)p;
 #if !DOOM_TINY
     saveg_write32((intptr_t) p);
 #endif

@@ -61,6 +61,9 @@ int I_DoomMain(int argc, char **argv)
 #if !NO_USE_ARGS
     myargc = argc;
     myargv = argv;
+#else
+    (void)argc;
+    (void)argv;
 #endif
 #if PICO_ON_DEVICE && !JASZCZURHAL_PORT
 #if PICO_RP2350

@@ -5,7 +5,8 @@ JaszczurHAL.
 
 ## Current State
 
-- The active port builds through JaszczurHAL/Arduino-Pico.
+- The active port builds through JaszczurHAL's native RP dispatcher and the
+  official Pico SDK.
 - The active legacy `src/pico` directory has been removed; files still needed
   by the port now live under `src/jaszczurhal`.
 - `DOOM_DUAL_CORE_COLUMNS=1` is enabled in the test configuration.

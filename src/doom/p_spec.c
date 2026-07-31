@@ -1189,6 +1189,8 @@ void P_UpdateSpecials (void)
 static void DonutOverrun(fixed_t *s3_floorheight, short *s3_floorpic,
                          line_t *line, sector_t *pillar_sector)
 {
+    (void)line;
+    (void)pillar_sector;
     static isb_int8_t first = 1;
     static int tmp_s3_floorheight;
     static int tmp_s3_floorpic;

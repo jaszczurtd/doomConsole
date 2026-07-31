@@ -397,8 +397,11 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     // fraggle: support the old "joyb_speed = 31" hack which
     // allowed an autorun effect
 
-    speed = key_speed >= NUMKEYS
-         || is_gamekeydown(key_speed)
+    speed =
+#if !DOOM_TINY
+         key_speed >= NUMKEYS ||
+#endif
+         is_gamekeydown(key_speed)
 #if !NO_USE_JOYSTICK
          || joybspeed >= MAX_JOY_BUTTONS
          || joybuttons[joybspeed]
@@ -1724,6 +1727,7 @@ char	savename[256];
 
 void G_LoadGame (char* name) 
 {
+    (void)name;
 #if !NO_FILE_ACCESS
     M_StringCopy(savename, name, sizeof(savename));
 #endif
@@ -1976,6 +1980,7 @@ G_DeferedInitNew
   int		map,
   boolean   net)
 { 
+    (void)net;
     d_skill = skill;
     d_episode = (isb_int8_t)episode;
     d_map = (isb_int8_t)map;

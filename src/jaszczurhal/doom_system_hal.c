@@ -87,6 +87,9 @@ void I_AtExit(atexit_func_t func, boolean run_on_error)
 
 void I_Tactile(int on, int off, int total)
 {
+    (void)on;
+    (void)off;
+    (void)total;
 }
 
 // Zone memory auto-allocation function that allocates the zone size
@@ -414,6 +417,7 @@ void write_num(int num, char *buffer, int len) {
 
 // waste space much?
 void handle_exit_key_down(int scancode, bool shift, uint8_t *kb_buffer, int kb_len) {
+    (void)kb_len;
     int l = strlen((char*)kb_buffer);
     if (entry_line < 0) {
         entry_line = 24;

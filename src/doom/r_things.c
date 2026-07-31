@@ -682,6 +682,8 @@ R_DrawVisSprite
         (vissprite_t *vis,
          int x1,
          int x2) {
+    (void)x1;
+    (void)x2;
     int texturecolumn;
     fixed_t frac;
     should_be_const patch_t *patch;

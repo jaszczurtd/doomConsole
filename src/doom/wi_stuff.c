@@ -483,6 +483,7 @@ static void WI_slamBackground(void)
 //  because of timing issues in netgames.
 boolean WI_Responder(event_t* ev)
 {
+    (void)ev;
     return false;
 }
 
@@ -1827,6 +1828,8 @@ void WI_loadData(void)
 
 static void WI_unloadCallback(vpatchname_t name, vpatch_handle_small_t *variable)
 {
+    (void)name;
+    (void)variable;
 #if !DOOM_TINY
     W_ReleaseLumpName(name);
     *variable = NULL;

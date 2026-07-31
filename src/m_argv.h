@@ -28,9 +28,12 @@
 //
 #if NO_USE_ARGS
 static inline int M_CheckParm(const char *check) {
+    (void)check;
     return 0;
 }
 static inline int M_CheckParmWithArgs(const char *check, int num_args) {
+    (void)check;
+    (void)num_args;
     return 0;
 }
 #else

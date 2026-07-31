@@ -50,6 +50,9 @@ wipe_shittyColMajorXform
     int		y;
     dpixel_t*	dest;
 
+    if (array == NULL)
+        return;
+
     dest = (dpixel_t*) Z_Malloc(width*height*sizeof(*dest), PU_STATIC, 0);
 
     for(y=0;y<height;y++)
@@ -68,6 +71,7 @@ wipe_initColorXForm
   int	height,
   int	ticks )
 {
+    (void)ticks;
     memcpy(wipe_scr, wipe_scr_start, width*height*sizeof(*wipe_scr));
     return 0;
 }
@@ -124,6 +128,9 @@ wipe_exitColorXForm
   int	height,
   int	ticks )
 {
+    (void)width;
+    (void)height;
+    (void)ticks;
     return 0;
 }
 
@@ -136,6 +143,7 @@ wipe_initMelt
   int	height,
   int	ticks )
 {
+    (void)ticks;
     int i, r;
     
     // copy start screen to main screen
@@ -143,8 +151,10 @@ wipe_initMelt
     
     // makes this wipe faster (in theory)
     // to have stuff in column-major format
+#if !NO_USE_WIPE
     wipe_shittyColMajorXform((dpixel_t*)wipe_scr_start, width/2, height);
     wipe_shittyColMajorXform((dpixel_t*)wipe_scr_end, width/2, height);
+#endif
     
     // setup initial column positions
     // (y<0 => not ready to scroll yet)
@@ -222,6 +232,9 @@ wipe_exitMelt
   int	height,
   int	ticks )
 {
+    (void)width;
+    (void)height;
+    (void)ticks;
     Z_Free(y);
     Z_Free(wipe_scr_start);
     Z_Free(wipe_scr_end);
@@ -235,6 +248,10 @@ wipe_StartScreen
   int	width,
   int	height )
 {
+    (void)x;
+    (void)y;
+    (void)width;
+    (void)height;
 #if !NO_USE_WIPE
     wipe_scr_start = Z_Malloc(SCREENWIDTH * SCREENHEIGHT * sizeof(*wipe_scr_start), PU_STATIC, 0);
     I_ReadScreen(wipe_scr_start);
@@ -249,6 +266,10 @@ wipe_EndScreen
   int	width,
   int	height )
 {
+    (void)x;
+    (void)y;
+    (void)width;
+    (void)height;
 #if !NO_USE_WIPE
     wipe_scr_end = Z_Malloc(SCREENWIDTH * SCREENHEIGHT * sizeof(*wipe_scr_end), PU_STATIC, 0);
     I_ReadScreen(wipe_scr_end);
@@ -266,6 +287,12 @@ wipe_ScreenWipe
   int	height,
   int	ticks )
 {
+    (void)wipeno;
+    (void)x;
+    (void)y;
+    (void)width;
+    (void)height;
+    (void)ticks;
 #if !NO_USE_WIPE
     int rc;
     static int (*wipes[])(int, int, int) =
@@ -300,4 +327,3 @@ wipe_ScreenWipe
     return 1;
 #endif
 }
-

@@ -8,6 +8,8 @@
 #include <stdio.h>
 
 uint16_t *read_channel_event_decoder(th_bit_input *bi, uint16_t *buffer, uint buffer_size, uint8_t *tmp_buf, uint tmp_buf_size) {
+    (void)buffer_size;
+    (void)tmp_buf_size;
     uint min_cl = th_read_bits(bi, 4);
     uint max_cl = th_read_bits(bi, 4);
 //    printf("  Code length %d->%d\n", min_cl, max_cl);

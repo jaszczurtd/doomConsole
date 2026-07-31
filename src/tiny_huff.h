@@ -58,6 +58,7 @@ static inline void th_bit_input_init(th_bit_input *bi, const uint8_t *data) {
 }
 
 static inline void th_sized_bit_input_init(th_bit_input *bi, const uint8_t *data, uint size) {
+    (void)size;
     bi->cur = data;
 #ifndef NDEBUG
     bi->end = data + size;
@@ -84,6 +85,7 @@ static inline void th_bit_input_init_bit_offset(th_bit_input *bi, const uint8_t 
 }
 
 static inline void th_sized_bit_input_init_bit_offset(th_bit_input *bi, const uint8_t *data, uint size, uint bit_offset) {
+    (void)size;
     bi->cur = data + bit_offset / 8;
 #ifndef NDEBUG
     bi->end = data + size - bit_offset / 8;

@@ -613,6 +613,7 @@ F_DrawPatchCol
   should_be_const patch_t*	patch,
   int		col )
 {
+    (void)col;
     column_t*	column;
     byte*	source;
     pixel_t*	dest;
@@ -784,5 +785,4 @@ void F_Drawer (void)
             break;
     }
 }
-
 

@@ -105,6 +105,8 @@ static inline void *Z_ThinkMalloc(int size, int tag, void *user) {
 thinker_t *Z_ThinkMallocImpl(int size);
 void Z_ThinkFree(thinker_t *thinker);
 static inline void *Z_ThinkMalloc(int size, int tag, void *user) {
+    (void)tag;
+    (void)user;
     assert(!user);
     assert(tag == PU_LEVEL);
     return Z_ThinkMallocImpl(size);

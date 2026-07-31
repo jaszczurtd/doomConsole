@@ -106,6 +106,7 @@ should_be_const void *W_CacheLumpNum(lumpindex_t lump, int tag);
 #else
 static inline should_be_const void *W_CacheLumpNum(lumpindex_t lumpnum, int tag)
 {
+    (void)tag;
     return lump_data(lump_info(lumpnum));
 }
 #endif

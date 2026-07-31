@@ -589,6 +589,8 @@ void Z_CheckHeap (void)
 //
 void Z_ChangeTag2(void *ptr, int tag, const char *file, int line)
 {
+    (void)file;
+    (void)line;
     memblock_t*	block;
 	
     block = (memblock_t *) ((byte *)ptr - sizeof(memblock_t));
