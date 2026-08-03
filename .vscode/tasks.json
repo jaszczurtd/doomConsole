@@ -22,9 +22,12 @@
   "tasks": [
     {
       "label": "Project: Build",
-      "detail": "Ctrl+Shift+1 - configure CMake and compile firmware",
+      "detail": "Compile rp2040_doom through JaszczurHAL VS Code entry",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "build",
         "--project",
@@ -34,82 +37,69 @@
         "kind": "build",
         "isDefault": true
       },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      },
       "problemMatcher": "$gcc"
     },
     {
       "label": "Project: Build (Debug)",
-      "detail": "Compile with debug symbols (auto-run by F5/Run)",
+      "detail": "Debug build rp2040_doom through JaszczurHAL VS Code entry",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "build-debug",
         "--project",
         "${workspaceFolder}"
       ],
       "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      },
       "problemMatcher": "$gcc"
     },
     {
       "label": "Project: Upload",
-      "detail": "Ctrl+Shift+2 - verified serial upload; falls back to UF2 when a BOOTSEL drive is visible",
+      "detail": "Upload rp2040_doom through the active target backend",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "upload",
         "--project",
         "${workspaceFolder}"
       ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      },
-      "problemMatcher": []
+      "problemMatcher": "$gcc"
     },
     {
       "label": "Project: Upload (UF2 / BOOTSEL)",
-      "detail": "Ctrl+Shift+4 - build and copy firmware.uf2 to BOOTSEL storage",
+      "detail": "RP2040 only: build rp2040_doom and copy UF2 to the single visible BOOTSEL drive",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "upload-uf2",
         "--project",
         "${workspaceFolder}"
       ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      },
       "problemMatcher": []
     },
     {
       "label": "Project: Upload WHX Payload",
-      "detail": "Upload doom1.whx through picotool; board must already be in BOOTSEL mode",
-      "type": "shell",
-      "command": "${workspaceFolder}/scripts/upload-whx-picotool.sh",
+      "detail": "Load and verify doom1.whx with managed picotool; board must be in BOOTSEL mode",
+      "type": "process",
+      "command": "python3",
+      "windows": {
+        "command": "py",
+        "args": [
+          "-3",
+          "${workspaceFolder}/scripts/upload_whx.py"
+        ]
+      },
+      "args": [
+        "${workspaceFolder}/scripts/upload_whx.py"
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -121,153 +111,44 @@
       "problemMatcher": []
     },
     {
-      "label": "Project: Serial Monitor",
-      "detail": "Ctrl+Shift+3 - waits for Pico (VID:PID), connects, then reconnects after unplug",
+      "label": "Project: Upload (OTA)",
+      "detail": "Build, authenticate, and upload rp2040_doom to a discovered native RP device",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
-        "monitor",
+        "upload-ota",
         "--project",
         "${workspaceFolder}",
-        "--lock-policy",
-        "replace-own"
+        "--interactive"
       ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "dedicated",
-        "showReuseMessage": false
-      },
-      "isBackground": true,
       "problemMatcher": []
     },
     {
-      "label": "Project: Debug Probe Monitor",
-      "detail": "Ctrl+Shift+5 - monitor for Raspberry Pi Debug Probe / Picoprobe",
+      "label": "Project: Discover OTA devices",
+      "detail": "List JaszczurHAL devices advertising native OTA",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
-      "args": [
-        "monitor-probe",
-        "--project",
-        "${workspaceFolder}",
-        "--lock-policy",
-        "replace-own"
-      ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "dedicated",
-        "showReuseMessage": false
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
       },
-      "isBackground": true,
-      "problemMatcher": []
-    },
-    {
-      "label": "Project: Serial Monitor (Any)",
-      "detail": "Monitor any /dev/ttyACM* or /dev/ttyUSB* device",
-      "type": "shell",
-      "command": "${config:jaszczurhal.vscodeEntry}",
       "args": [
-        "monitor-any",
-        "--project",
-        "${workspaceFolder}",
-        "--lock-policy",
-        "replace-own"
-      ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "dedicated",
-        "showReuseMessage": false
-      },
-      "isBackground": true,
-      "problemMatcher": []
-    },
-    {
-      "label": "Project: Refresh IntelliSense",
-      "detail": "Ctrl+Shift+6 - compile project and generate c_cpp_properties.json",
-      "type": "shell",
-      "command": "${config:jaszczurhal.vscodeEntry}",
-      "args": [
-        "refresh-intellisense",
+        "ota-discover",
         "--project",
         "${workspaceFolder}"
       ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Project: Clean",
-      "detail": "Ctrl+Shift+7 - remove .build directory",
-      "type": "shell",
-      "command": "${config:jaszczurhal.vscodeEntry}",
-      "args": [
-        "clean",
-        "--project",
-        "${workspaceFolder}"
-      ],
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "panel": "shared",
-        "showReuseMessage": false
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Project: Clear USB Identity",
-      "detail": "Build/upload neutral USB identity firmware to the selected verified port",
-      "type": "shell",
-      "command": "${config:jaszczurhal.vscodeEntry}",
-      "args": [
-        "clear-identity",
-        "--project",
-        "${workspaceFolder}"
-      ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Project: Config Dump",
-      "detail": "Print resolved JaszczurHAL VS Code project config",
-      "type": "shell",
-      "command": "${config:jaszczurhal.vscodeEntry}",
-      "args": [
-        "config-dump",
-        "--project",
-        "${workspaceFolder}"
-      ],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": false,
-        "clear": true
-      },
       "problemMatcher": []
     },
     {
       "label": "Project: List ports",
+      "detail": "Show serial ports, identity matches, and BOOTSEL candidates",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "list-ports",
         "--project",
@@ -277,8 +158,12 @@
     },
     {
       "label": "Project: Change port",
+      "detail": "Interactively persist the upload/monitor serial port",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "change-port",
         "--project",
@@ -287,21 +172,151 @@
       "problemMatcher": []
     },
     {
-      "label": "Project: Select board",
+      "label": "Project: Serial Monitor",
+      "detail": "Persistent rp2040_doom serial monitor",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "monitor",
+        "--project",
+        "${workspaceFolder}",
+        "--lock-policy",
+        "replace-own"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Project: Debug Probe Monitor",
+      "detail": "Debug Probe monitor through JaszczurHAL VS Code entry",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "monitor-probe",
+        "--project",
+        "${workspaceFolder}",
+        "--lock-policy",
+        "replace-own"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Project: Serial Monitor (Any)",
+      "detail": "Any serial monitor through JaszczurHAL VS Code entry",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "monitor-any",
+        "--project",
+        "${workspaceFolder}",
+        "--lock-policy",
+        "wait"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Project: Refresh IntelliSense",
+      "detail": "Refresh rp2040_doom IntelliSense through JaszczurHAL VS Code entry",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "refresh-intellisense",
+        "--project",
+        "${workspaceFolder}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Project: Clean",
+      "detail": "Clean rp2040_doom build directory",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "clean",
+        "--project",
+        "${workspaceFolder}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Project: Clear USB Identity",
+      "detail": "Flash neutral firmware after verifying current Doom Console identity",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "clear-identity",
+        "--project",
+        "${workspaceFolder}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Project: Config Dump",
+      "detail": "Show resolved JaszczurHAL VS Code project configuration",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "config-dump",
+        "--project",
+        "${workspaceFolder}"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Project: Select board",
+      "detail": "Interactive target/board selection",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "select-board",
         "--project",
         "${workspaceFolder}",
         "--interactive"
       ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
       "problemMatcher": []
     },
     {
       "label": "Project: Select board (GUI)",
+      "detail": "Pick target/board from the VS Code input menu",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "select-board",
         "--project",
@@ -316,6 +331,9 @@
       "detail": "Refresh target/board options from the JaszczurHAL registry",
       "type": "shell",
       "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
       "args": [
         "sync-board-picker",
         "--project",

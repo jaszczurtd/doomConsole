@@ -166,6 +166,12 @@ After changing the manifest, regenerate the CMake cache and rebuild:
 ../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project .
 ```
 
+On Windows use the native launcher:
+
+```powershell
+& ..\libraries\JaszczurHAL\vscode\entry\jh-vscode.cmd build --project .
+```
+
 ## Build Requirements
 
 Expected local tools:
@@ -173,8 +179,10 @@ Expected local tools:
 - `cmake`
 - [JaszczurHAL](https://github.com/jaszczurtd/JaszczurHAL) checked out at `../libraries/JaszczurHAL` by default
 
-JaszczurHAL's `./runmefirst.sh` prepares the pinned Pico SDK, RP toolchains,
-picotool, and the remaining managed dependencies required by the build.
+JaszczurHAL's `./runmefirst.sh` or `runmefirst.ps1` prepares the pinned Pico
+SDK, RP toolchains, picotool, and the remaining managed dependencies required
+by the build. The WHX uploader reads the same managed `picotool` path from
+JaszczurHAL's host environment; it does not search Arduino directories.
 
 The tracked editor configuration points `jaszczurhal.root` at
 `../libraries/JaszczurHAL`; override that local setting when the checkout uses
@@ -215,6 +223,11 @@ The generated outputs are placed under `.build/`, including:
 Detailed linker output, including `firmware.elf.map`, remains in the resolved
 target/board directory below `.build/cmake/`.
 
+The `Windows firmware` workflow runs uploader/unit tests, validates the managed
+picotool dry run, builds the default RP2350 ARM/Pico 2 W firmware and refreshes
+IntelliSense on a native `windows-2025` runner. Physical WHX load/verify/reboot
+remains a manual BOOTSEL smoke test.
+
 ## Board And Upload Flow
 
 Board selection uses the JaszczurHAL target and board profile in
@@ -244,11 +257,17 @@ VS Code firmware tasks:
 - `Project: Refresh IntelliSense`
 - `Project: Upload WHX Payload` - runs the picotool WHX helper below.
 
-The WHX payload upload remains a separate picotool flow and expects the board
-to already be in BOOTSEL mode:
+The WHX payload upload remains a separate picotool flow and expects a 4 MiB
+Doom target board to already be in BOOTSEL mode. On Windows:
+
+```powershell
+py -3 scripts/upload_whx.py
+```
+
+On Linux/macOS:
 
 ```bash
-sudo scripts/upload-whx-picotool.sh
+python3 scripts/upload_whx.py
 ```
 
 By default it writes the payload at:
@@ -258,6 +277,20 @@ By default it writes the payload at:
 ```
 
 This address is controlled by `DOOM_WHD_FLASH_ADDR`.
+The helper always runs `picotool load` followed by `verify`, and reboots only
+after both commands succeed. Use `--no-reboot` to keep the board in BOOTSEL or
+`--dry-run` to validate the payload, managed tool path, flash bounds and exact
+commands without accessing USB. The default safety check requires the 1.8 MiB
+payload at `0x10200000` to fit within the declared 4 MiB flash; do not use this
+flow on a 2 MiB Pico.
+
+After shared task-registry changes, regenerate and verify the tracked VS Code
+files with:
+
+```powershell
+py -3 scripts/sync_vscode_project.py
+py -3 scripts/sync_vscode_project.py --check
+```
 
 ## WHD/WHX Game Data
 

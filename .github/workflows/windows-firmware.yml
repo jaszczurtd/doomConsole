@@ -1,0 +1,84 @@
+name: Windows firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PYTHONUTF8: "1"
+
+jobs:
+  windows-firmware:
+    runs-on: windows-2025
+
+    steps:
+      - name: Check out doomConsole
+        uses: actions/checkout@v5
+        with:
+          path: workspace/doomConsole
+
+      - name: Check out JaszczurHAL
+        uses: actions/checkout@v5
+        with:
+          repository: jaszczurtd/JaszczurHAL
+          path: workspace/libraries/JaszczurHAL
+
+      - name: Cache authenticated Windows tools
+        uses: actions/cache@v4
+        with:
+          path: C:\jh\tools
+          key: doom-windows-tools-${{ hashFiles('workspace/libraries/JaszczurHAL/third_party/windows_tools_version.conf', 'workspace/libraries/JaszczurHAL/third_party/riscv_toolchain_version.conf', 'workspace/libraries/JaszczurHAL/third_party/windows_requirements.txt') }}
+
+      - name: Prepare native Windows environment
+        shell: powershell
+        working-directory: workspace/libraries/JaszczurHAL
+        run: >-
+          .\runmefirst.ps1 -Force -ConfigureHost -FirmwareOnly
+          -ToolsRoot C:\jh\tools
+          -BuildRoot C:\jh\build
+
+      - name: Test uploader and generated VS Code project
+        shell: powershell
+        working-directory: workspace/doomConsole
+        run: |
+          $python = '..\libraries\JaszczurHAL\.build\windows\venv\Scripts\python.exe'
+          & $python -m unittest discover -s tests -p 'test_*.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'doomConsole tooling tests failed.' }
+          & $python scripts/upload_whx.py --dry-run
+          if ($LASTEXITCODE -ne 0) { throw 'Managed picotool dry run failed.' }
+
+      - name: Build RP2350 ARM firmware and IntelliSense database
+        shell: powershell
+        working-directory: workspace/doomConsole
+        run: |
+          $entry = '..\libraries\JaszczurHAL\vscode\entry\jh-vscode.cmd'
+          & $entry build --project . --target rp2350-arm --board pico2w
+          if ($LASTEXITCODE -ne 0) { throw 'RP2350 ARM doomConsole build failed.' }
+          & $entry refresh-intellisense --project . --target rp2350-arm --board pico2w
+          if ($LASTEXITCODE -ne 0) { throw 'doomConsole IntelliSense refresh failed.' }
+
+      - name: Verify checkout stayed clean
+        shell: powershell
+        working-directory: workspace/doomConsole
+        run: |
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'Build modified tracked files.' }
+          $unexpected = git status --porcelain --untracked-files=all
+          if ($unexpected) {
+            throw "Build left unexpected repository files:`n$unexpected"
+          }
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: doom-console-windows-rp2350-arm
+          path: |
+            workspace/doomConsole/.build/firmware.elf
+            workspace/doomConsole/.build/firmware.bin
+            workspace/doomConsole/.build/firmware.uf2
+            workspace/doomConsole/.build/compile_commands_patched.json
+          if-no-files-found: error

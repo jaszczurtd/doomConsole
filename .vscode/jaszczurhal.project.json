@@ -32,6 +32,8 @@
         "enabled": true,
         "usbManufacturer": "Jaszczur",
         "usbProduct": "Doom Console",
+        "usbVid": "0x2e8a",
+        "usbPid": "0x0009",
         "byIdHint": "Doom_Console"
     },
     "artifacts": {
