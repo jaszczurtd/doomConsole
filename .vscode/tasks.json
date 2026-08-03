@@ -348,7 +348,10 @@
         "panel": "shared",
         "showReuseMessage": false
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      }
     }
   ]
 }
