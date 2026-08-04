@@ -64,6 +64,9 @@ class VscodeProjectTests(unittest.TestCase):
             for forbidden in ("/dev/", "/home/", ".arduino15", "SUDO_USER"):
                 self.assertNotIn(forbidden, content, name)
 
+        launch = (REPO_ROOT / ".vscode" / "launch.json").read_text(encoding="utf-8")
+        self.assertNotIn("${config:cortex-debug.", launch)
+
 
 if __name__ == "__main__":
     unittest.main()

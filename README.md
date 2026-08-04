@@ -257,6 +257,11 @@ VS Code firmware tasks:
 - `Project: Refresh IntelliSense`
 - `Project: Upload WHX Payload` - runs the picotool WHX helper below.
 
+The Run and Debug view provides RP2040/RP2350 launch and attach profiles for a
+CMSIS-DAP Debug Probe. On native Windows, JaszczurHAL `runmefirst.ps1`
+configures the verified OpenOCD and GNU Arm paths in the user profile; the
+project launch file does not require machine-local Cortex-Debug variables.
+
 The WHX payload upload remains a separate picotool flow and expects a 4 MiB
 Doom target board to already be in BOOTSEL mode. On Windows:
 
