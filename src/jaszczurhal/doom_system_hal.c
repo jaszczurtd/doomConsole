@@ -352,7 +352,7 @@ void I_BindVariables(void)
 #if !JASZCZURHAL_PORT
 #include "pico/sem.h"
 #else
-#include <hal/hal_system.h>
+#include <hal/system/hal_system.h>
 #endif
 #include "whddata.h"
 #if USE_PICO_NET

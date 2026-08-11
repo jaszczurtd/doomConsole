@@ -1,10 +1,10 @@
 #include <JaszczurHAL.h>
-#include <hal/hal_app.h>
-#include <hal/hal_display.h>
-#include <hal/hal_gpio.h>
-#include <hal/hal_serial.h>
-#include <hal/hal_spi.h>
-#include <hal/hal_system.h>
+#include <hal/core/hal_app.h>
+#include <hal/display/hal_display.h>
+#include <hal/gpio/hal_gpio.h>
+#include <hal/serial/hal_serial.h>
+#include <hal/spi/hal_spi.h>
+#include <hal/system/hal_system.h>
 #include <utils/tools_api.h>
 
 #include <stddef.h>

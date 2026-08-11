@@ -15,9 +15,9 @@
 #include <JaszczurHAL.h>
 #include <utils/tools_api.h>
 
-#include <hal/hal_display.h>
-#include <hal/hal_sync.h>
-#include <hal/hal_system.h>
+#include <hal/display/hal_display.h>
+#include <hal/system/hal_sync.h>
+#include <hal/system/hal_system.h>
 
 /* Diagnostic only: confirm the real system/peripheral clocks so we can tell
  * whether the TFT SPI is actually running at the requested rate. */

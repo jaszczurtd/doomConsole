@@ -24,8 +24,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <hal/hal_dma_pwm_audio.h>
-#include <hal/hal_serial.h>
+#include <hal/audio/hal_dma_pwm_audio.h>
+#include <hal/serial/hal_serial.h>
 
 #include "deh_str.h"
 #include "doom/sounds.h"

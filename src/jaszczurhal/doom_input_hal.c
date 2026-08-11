@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <hal/hal_gpio.h>
+#include <hal/gpio/hal_gpio.h>
 
 #include "d_event.h"
 #include "doomkeys.h"

@@ -15,9 +15,9 @@
 #include <JaszczurHAL.h>
 #include <utils/tools_api.h>
 
-#include <hal/hal_sync.h>
-#include <hal/hal_serial.h>
-#include <hal/hal_system.h>
+#include <hal/system/hal_sync.h>
+#include <hal/serial/hal_serial.h>
+#include <hal/system/hal_system.h>
 #include <hardware/structs/sio.h>
 
 #include "doomtype.h"

@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-#include <hal/hal_system.h>
+#include <hal/system/hal_system.h>
 
 #include "i_timer.h"
 
