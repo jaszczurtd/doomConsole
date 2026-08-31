@@ -113,6 +113,11 @@ def resolve_picotool(args: argparse.Namespace) -> Path:
         if managed is not None:
             candidates.append(managed)
 
+    managed_name = "picotool.exe" if os.name == "nt" else "picotool"
+    candidates.append(
+        args.jaszczurhal_root / ".build" / "tools" / "picotool" / managed_name
+    )
+
     for name in ("picotool", "picotool.exe"):
         discovered = shutil.which(name)
         if discovered:

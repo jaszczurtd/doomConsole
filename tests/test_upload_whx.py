@@ -93,6 +93,23 @@ class UploadWhxTests(unittest.TestCase):
 
             self.assertEqual(resolved, picotool.resolve())
 
+    def test_managed_jaszczurhal_build_resolves_picotool(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "JaszczurHAL"
+            executable = "picotool.exe" if sys.platform == "win32" else "picotool"
+            picotool = root / ".build" / "tools" / "picotool" / executable
+            picotool.parent.mkdir(parents=True)
+            picotool.touch()
+            args = argparse.Namespace(
+                picotool=None,
+                host_environment=None,
+                jaszczurhal_root=root,
+            )
+
+            resolved = upload_whx.resolve_picotool(args)
+
+            self.assertEqual(resolved, picotool.resolve())
+
     def test_payload_must_fit_declared_flash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             payload = Path(temporary) / "payload.whx"

@@ -27,6 +27,41 @@ Default button map:
 
 Implementation: `src/jaszczurhal/doom_input_hal.c`.
 
+## Bluetooth Gamepad
+
+The `rp2350-arm:pico2w` profile enables the JaszczurHAL Bluetooth Classic
+gamepad feature. The first supported controller is an 8BitDo Zero 2 in Android
+D-input mode. GPIO and Bluetooth actions are combined, so the physical buttons
+remain usable while a controller is connected.
+
+The current buttonless bench configuration sets `BT_AUTOMATIC_PAIRING=1`, so
+startup queues a bounded 120-second pairing window as soon as the profile is
+ready. Start the Zero 2 in Android D-input mode with `B+Start`, then put it into
+pairing mode with `Select`. Set the flag to `0` to restore manual-only pairing;
+then hold the physical GPIO `Menu` and `Back` buttons together for three
+seconds to open the same window.
+
+Initial Zero 2 mapping:
+
+| Zero 2 control | Doom action | Doom key |
+| --- | --- | --- |
+| D-pad up/down | Move forward/backward | Arrow up/down |
+| D-pad left/right | Turn left/right | Arrow left/right |
+| A | Fire | `KEY_RCTRL` |
+| B | Use/open | Space |
+| X | Accept/start game | `KEY_ENTER` |
+| Start | Menu/pause through the menu | `KEY_ESCAPE` |
+| Select | Back | `KEY_BACKSPACE` |
+| Y, L, R | Reserved for the C8 ergonomics test | None |
+
+The adapter accepts input only after receiving a neutral snapshot for each new
+connection generation. Disconnect, queue overflow, and polling errors release
+all gamepad-owned actions. Persistent bonding across a firmware restart belongs
+to C9; during C8, restart the pairing procedure after reboot if reconnect is
+not available in the current runtime.
+
+Implementation: `src/jaszczurhal/doom_gamepad_input.c`.
+
 ## TFT Display
 
 Test platform: Waveshare RP2040-Plus 4 MB with a 2.8" SPI TFT using the
@@ -34,10 +69,10 @@ ILI9341 controller.
 
 Default display wiring:
 
-| Display signal | RP2040 GPIO | Notes |
+| Display signal | Pico GPIO | Notes |
 | --- | ---: | --- |
 | `SCK` / `CLK` | 18 | SPI0 clock, JaszczurHAL default bus 0 |
-| `MOSI` / `SDA` / `DIN` | 19 | SPI0 TX, data from RP2040 to display |
+| `MOSI` / `SDA` / `DIN` | 19 | SPI0 TX, data from the Pico to display |
 | `MISO` / `SDO` | 16 | Optional for display-only ILI9341 use |
 | `CS` | 17 | `DOOM_HAL_TFT_CS_PIN` |
 | `DC` / `D/C` / `RS` | 20 | `DOOM_HAL_TFT_DC_PIN` |

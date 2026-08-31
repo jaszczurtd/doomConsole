@@ -52,6 +52,7 @@ else()
     set(DOOM_PORT_SOURCES
         src/jaszczurhal/doom_app.cpp
         src/jaszczurhal/doom_backend_stub.c
+        src/jaszczurhal/doom_gamepad_input.c
         src/jaszczurhal/doom_input_hal.c
         src/jaszczurhal/doom_storage_hal.c
         src/jaszczurhal/doom_string_hal.c

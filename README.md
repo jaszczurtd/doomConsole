@@ -61,7 +61,8 @@ Important current traits:
 - Tested configuration uses Waveshare RP2040 Plus / 4 MB style target, and 
   Raspberry pi pico2 (RP2350).
 - The default WHD/WHX payload address is `0x10200000`.
-- The active build is tuned for a TFT display and HAL GPIO/button input.
+- The active Pico 2 W build is tuned for a TFT display, HAL GPIO buttons, and
+  an optional 8BitDo Zero 2 Bluetooth gamepad.
 
 See `port_issues.md` for the short current performance plan.
 
@@ -71,6 +72,9 @@ Common groups in `doom_main_config.h`:
 
 - TFT display: SPI pins, panel dimensions, rotation, color order, flush mode.
 - GPIO input: active-low mode and button pins.
+- Bluetooth input: a neighboring snapshot adapter merges Zero 2 actions with
+  GPIO. The temporary `BT_AUTOMATIC_PAIRING=1` bench setting opens pairing at
+  startup; set it to `0` to require the physical `Menu+Back` gesture.
 - Audio: PWM pin, PWM resolution, block size, sample rate, mixer channels.
 - Flash/WHD: XIP base, flash size, payload address, scan step.
 - Zone/heap: Doom zone size and heap reserve.

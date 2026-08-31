@@ -28,6 +28,15 @@
             "compileDb": "firmware_compile_db"
         }
     },
+    "targetProfiles": {
+        "rp2350-arm": {
+            "cmake": {
+                "cache": {
+                    "JH_EXTRA_DEFINES": "HAL_ENABLE_BLUETOOTH_GAMEPAD=1"
+                }
+            }
+        }
+    },
     "identity": {
         "enabled": true,
         "usbManufacturer": "Jaszczur",

@@ -249,6 +249,20 @@ static inline uint32_t DoomEstimateRp2040SpiActualHz(uint32_t peri_hz,
 #define DOOM_INPUT_PIN_BACK 11
 #endif
 
+// Hold the physical Menu and Back buttons for this long to open pairing.
+#ifndef DOOM_GAMEPAD_PAIRING_HOLD_MS
+#define DOOM_GAMEPAD_PAIRING_HOLD_MS 3000u
+#endif
+
+// Temporary bench mode for pairing without physical GPIO buttons.
+#ifndef BT_AUTOMATIC_PAIRING
+#define BT_AUTOMATIC_PAIRING 1
+#endif
+
+#if BT_AUTOMATIC_PAIRING != 0 && BT_AUTOMATIC_PAIRING != 1
+#error "BT_AUTOMATIC_PAIRING must be 0 or 1."
+#endif
+
 /* Audio */
 #ifndef DOOM_HAL_AUDIO_PWM_PIN
 #define DOOM_HAL_AUDIO_PWM_PIN 6u

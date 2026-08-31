@@ -64,6 +64,14 @@ class VscodeProjectTests(unittest.TestCase):
         )
         self.assertEqual(manifest["identity"]["usbVid"], "0x2e8a")
         self.assertEqual(manifest["identity"]["usbPid"], "0x0009")
+        self.assertEqual(manifest["target"], "rp2350-arm")
+        self.assertEqual(manifest["board"], "pico2w")
+        self.assertEqual(
+            manifest["targetProfiles"]["rp2350-arm"]["cmake"]["cache"][
+                "JH_EXTRA_DEFINES"
+            ],
+            "HAL_ENABLE_BLUETOOTH_GAMEPAD=1",
+        )
         for name in ("settings.json", "tasks.json", "keybindings.reference.json"):
             content = (REPO_ROOT / ".vscode" / name).read_text(encoding="utf-8")
             for forbidden in ("/dev/", "/home/", ".arduino15", "SUDO_USER"):
