@@ -52,7 +52,9 @@ Initial Zero 2 mapping:
 | X | Accept/start game | `KEY_ENTER` |
 | Start | Menu/pause through the menu | `KEY_ESCAPE` |
 | Select | Back | `KEY_BACKSPACE` |
-| Y, L, R | Reserved for the C8 ergonomics test | None |
+| Y + D-pad left/right | Strafe left/right | `KEY_RALT` + arrow left/right |
+| L | Strafe left | `,` (`key_strafeleft`) |
+| R | Strafe right | `.` (`key_straferight`) |
 
 The adapter accepts input only after receiving a neutral snapshot for each new
 connection generation. Disconnect, queue overflow, and polling errors release

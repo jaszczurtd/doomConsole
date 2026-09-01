@@ -25,6 +25,7 @@
 #include "doomdef.h" 
 #include "doomkeys.h"
 #include "doomstat.h"
+#include "doom/doom_pre_wipe.h"
 
 #include "deh_main.h"
 #include "deh_misc.h"
@@ -984,10 +985,7 @@ void G_Ticker (void)
         if (gameaction == ga_loadlevel || gameaction == ga_newgame || gameaction == ga_completed || gameaction == ga_worlddone) {
             // we prefer (real doom seems to, chocolate doesn't, but i think it looks better without the menu wiping at least)
             // to remove menu/status before wipe, so insert an extra frame so it can be drawn as an (non framebuffer) overlay instead
-            if (pre_wipe_state == PRE_WIPE_EXTRA_FRAME_DONE) {
-                pre_wipe_state = PRE_WIPE_NONE;
-            } else {
-                pre_wipe_state = PRE_WIPE_EXTRA_FRAME_NEEDED;
+            if (DoomPreWipe_ShouldDeferAction()) {
                 break;
             }
         }
@@ -1159,7 +1157,7 @@ void G_Ticker (void)
       case GS_LEVEL:
 	P_Ticker ();
 #if DOOM_TINY
-    if (!pre_wipe_state)
+    if (!DoomPreWipe_IsPending())
 #endif
 	    ST_Ticker ();
 	AM_Ticker (); 

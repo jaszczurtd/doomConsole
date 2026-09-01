@@ -254,6 +254,10 @@ static inline uint32_t DoomEstimateRp2040SpiActualHz(uint32_t peri_hz,
 #define DOOM_GAMEPAD_PAIRING_HOLD_MS 3000u
 #endif
 
+#ifndef DOOM_PAUSE_BEFORE_START
+#define DOOM_PAUSE_BEFORE_START 0
+#endif
+
 // Temporary bench mode for pairing without physical GPIO buttons.
 #ifndef BT_AUTOMATIC_PAIRING
 #define BT_AUTOMATIC_PAIRING 1

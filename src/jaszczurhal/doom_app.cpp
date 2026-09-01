@@ -281,7 +281,9 @@ void app_start(void) {
   debugInit();
   hal_deb_set_prefix("DOOM");
 
-  hal_delay_ms(4000u);
+  if(DOOM_PAUSE_BEFORE_START != 0) {
+    hal_delay_ms(4000u);
+  }
 
   deb("");
   deb("[boot] rp2040-doom boot");
@@ -421,14 +423,14 @@ void app_start(void) {
     hal_derr("missing WHD/WHX payload at 0x%08lx; got %s expected %s",
              (unsigned long)(uintptr_t)whd_base, first4,
              expected_payload_magic());
-    boot_display_message(HAL_COLOR_RED, HAL_COLOR_WHITE, "RP2040 Doom",
+    boot_display_message(HAL_COLOR_RED, HAL_COLOR_WHITE, "RP2040/2350 Doom",
                          "Missing WHX", first4);
     return;
   }
 
   hal_deb("WHD/WHX payload OK at 0x%08lx",
           (unsigned long)(uintptr_t)whd_base);
-  boot_display_message(HAL_COLOR_BLACK, HAL_COLOR_GREEN, "RP2040 Doom",
+  boot_display_message(HAL_COLOR_BLACK, HAL_COLOR_GREEN, "RP2040/2350 Doom",
                        "WHX OK", "Starting...");
   s_boot_ready_ms = hal_millis();
   deb("[boot] diagnostics hold: %u ms before I_DoomMain",

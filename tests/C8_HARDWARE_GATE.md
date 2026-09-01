@@ -20,18 +20,20 @@ mode. The host tests and firmware build do not replace this physical gate.
 
 - Navigate the menu and start a game with the pad.
 - Verify forward/backward movement, left/right turning, fire, use, menu/pause,
-  accept, and back with the mapping in `hardware_layout.md`.
+  accept, back, both `Y` + D-pad strafe directions, and direct `L`/`R` strafe
+  with the mapping in `hardware_layout.md`.
 - Repeat the same flow using only GPIO, both with the pad connected and after
   it has disconnected.
 - Play continuously for 30 minutes.
 - Perform 20 controller power-off/power-on reconnects in the same firmware
   runtime.
-- Disconnect once while holding each mapped pad control. Each case must produce
-  a release with no stuck movement, turn, fire, use, or menu key.
+- Disconnect once while holding each mapped pad control, including both strafe
+  chords and both shoulder buttons. Each case must produce a release with no
+  stuck movement, turn, strafe, fire, use, or menu key.
 - Measure report-to-event latency over at least 200 transitions. Required:
   p95 at most 29 ms and maximum at most 58 ms.
-- Record any ergonomic mapping changes; Y, L, and R remain unassigned until
-  this check is complete.
+- Compare the `Y` + D-pad and direct `L`/`R` strafe mappings and record the
+  final ergonomic choice.
 
 Do not mark C8 complete without attaching the serial log, latency data, exact
 firmware commit, board and controller identity, elapsed play time, reconnect

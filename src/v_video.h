@@ -73,12 +73,6 @@ typedef struct {
 static_assert(sizeof(vpatchlists_t) < 0xc00, "");
 extern vpatchlists_t *vpatchlists;
 
-typedef enum {
-    PRE_WIPE_NONE=0,
-    PRE_WIPE_EXTRA_FRAME_NEEDED=1,
-    PRE_WIPE_EXTRA_FRAME_DONE=2
-} pre_wipe_state_t;
-extern pre_wipe_state_t pre_wipe_state;
 #define TEXT_SCANLINE_BUFFER_WORDS (SCREENWIDTH + 4)
 #define TEXT_SCANLINE_BUFFER_TOTAL_WORDS (PICO_SCANVIDEO_SCANLINE_BUFFER_COUNT * TEXT_SCANLINE_BUFFER_WORDS)
 void V_BeginPatchList(vpatchlist_t *patchlist);

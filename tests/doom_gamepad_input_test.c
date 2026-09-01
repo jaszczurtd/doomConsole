@@ -12,6 +12,9 @@ enum {
     ZERO2_BUTTON_A = 0x0001u,
     ZERO2_BUTTON_B = 0x0002u,
     ZERO2_BUTTON_X = 0x0008u,
+    ZERO2_BUTTON_Y = 0x0010u,
+    ZERO2_BUTTON_L = 0x0040u,
+    ZERO2_BUTTON_R = 0x0080u,
     ZERO2_BUTTON_SELECT = 0x0400u,
     ZERO2_BUTTON_START = 0x0800u,
     SNAPSHOT_CAPACITY = 16,
@@ -160,7 +163,8 @@ int main(void)
     assert(service_connected() == 0u);
 
     hal_gamepad_snapshot_t active = snapshot(1u,
-        ZERO2_BUTTON_A | ZERO2_BUTTON_B | ZERO2_BUTTON_X | ZERO2_BUTTON_START
+        ZERO2_BUTTON_A | ZERO2_BUTTON_B | ZERO2_BUTTON_X | ZERO2_BUTTON_Y
+            | ZERO2_BUTTON_L | ZERO2_BUTTON_R | ZERO2_BUTTON_START
             | ZERO2_BUTTON_SELECT,
         HAL_GAMEPAD_DPAD_UP | HAL_GAMEPAD_DPAD_LEFT);
     queue_result(HAL_OK, active);
@@ -168,7 +172,9 @@ int main(void)
         == (DOOM_INPUT_ACTION_UP | DOOM_INPUT_ACTION_LEFT
             | DOOM_INPUT_ACTION_FIRE | DOOM_INPUT_ACTION_USE
             | DOOM_INPUT_ACTION_MENU | DOOM_INPUT_ACTION_ACCEPT
-            | DOOM_INPUT_ACTION_BACK));
+            | DOOM_INPUT_ACTION_BACK | DOOM_INPUT_ACTION_STRAFE
+            | DOOM_INPUT_ACTION_STRAFE_LEFT
+            | DOOM_INPUT_ACTION_STRAFE_RIGHT));
 
     hal_gamepad_snapshot_t axes = snapshot(1u, 0u, 0u);
     axes.axes_present = (1u << HAL_GAMEPAD_AXIS_X) | (1u << HAL_GAMEPAD_AXIS_Y);

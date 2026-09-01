@@ -14,6 +14,9 @@ enum {
     DOOM_INPUT_ACTION_MENU = (1u << 6),
     DOOM_INPUT_ACTION_ACCEPT = (1u << 7),
     DOOM_INPUT_ACTION_BACK = (1u << 8),
+    DOOM_INPUT_ACTION_STRAFE = (1u << 9),
+    DOOM_INPUT_ACTION_STRAFE_LEFT = (1u << 10),
+    DOOM_INPUT_ACTION_STRAFE_RIGHT = (1u << 11),
 };
 
 void DoomGamepadInput_Init(void);

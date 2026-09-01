@@ -108,6 +108,45 @@ int main(void)
     expect_event(0u, ev_keyup, KEY_RCTRL);
 
     clear_events();
+    s_gamepad_actions = DOOM_INPUT_ACTION_UP | DOOM_INPUT_ACTION_DOWN
+        | DOOM_INPUT_ACTION_LEFT | DOOM_INPUT_ACTION_RIGHT
+        | DOOM_INPUT_ACTION_FIRE | DOOM_INPUT_ACTION_USE
+        | DOOM_INPUT_ACTION_MENU | DOOM_INPUT_ACTION_ACCEPT
+        | DOOM_INPUT_ACTION_BACK | DOOM_INPUT_ACTION_STRAFE
+        | DOOM_INPUT_ACTION_STRAFE_LEFT | DOOM_INPUT_ACTION_STRAFE_RIGHT;
+    I_GetEvent();
+    assert(s_event_count == 12u);
+    expect_event(0u, ev_keydown, KEY_UPARROW);
+    expect_event(1u, ev_keydown, KEY_DOWNARROW);
+    expect_event(2u, ev_keydown, KEY_LEFTARROW);
+    expect_event(3u, ev_keydown, KEY_RIGHTARROW);
+    expect_event(4u, ev_keydown, KEY_RCTRL);
+    expect_event(5u, ev_keydown, ' ');
+    expect_event(6u, ev_keydown, KEY_ESCAPE);
+    expect_event(7u, ev_keydown, KEY_ENTER);
+    expect_event(8u, ev_keydown, KEY_BACKSPACE);
+    expect_event(9u, ev_keydown, KEY_RALT);
+    expect_event(10u, ev_keydown, ',');
+    expect_event(11u, ev_keydown, '.');
+
+    clear_events();
+    s_gamepad_actions = 0u;
+    I_GetEvent();
+    assert(s_event_count == 12u);
+    expect_event(0u, ev_keyup, KEY_UPARROW);
+    expect_event(1u, ev_keyup, KEY_DOWNARROW);
+    expect_event(2u, ev_keyup, KEY_LEFTARROW);
+    expect_event(3u, ev_keyup, KEY_RIGHTARROW);
+    expect_event(4u, ev_keyup, KEY_RCTRL);
+    expect_event(5u, ev_keyup, ' ');
+    expect_event(6u, ev_keyup, KEY_ESCAPE);
+    expect_event(7u, ev_keyup, KEY_ENTER);
+    expect_event(8u, ev_keyup, KEY_BACKSPACE);
+    expect_event(9u, ev_keyup, KEY_RALT);
+    expect_event(10u, ev_keyup, ',');
+    expect_event(11u, ev_keyup, '.');
+
+    clear_events();
     s_now_ms = 100u;
     s_pin_high[DOOM_INPUT_PIN_MENU] = false;
     s_pin_high[DOOM_INPUT_PIN_BACK] = false;

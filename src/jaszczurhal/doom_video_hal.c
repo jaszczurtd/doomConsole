@@ -36,6 +36,7 @@
 #include "z_zone.h"
 #include "doom/am_map.h"
 #include "doom/d_main.h"
+#include "doom/doom_pre_wipe.h"
 #include "doom/doomstat.h"
 #include "doom/f_finale.h"
 #include "doom/f_wipe.h"
@@ -93,8 +94,6 @@ uint32_t *wipe_linelookup = NULL;
 wipestate_t wipestate = WIPESTATE_NONE;
 volatile uint8_t wipe_min = 0;
 #endif
-pre_wipe_state_t pre_wipe_state = PRE_WIPE_NONE;
-
 volatile uint8_t interp_in_use = 0;
 int pd_flag = 0;
 fixed_t pd_scale = FRACUNIT;
@@ -829,6 +828,7 @@ static void DoomVideo_DrawFrameOverlay(void)
     }
 
     M_Drawer();
+    DoomPreWipe_MarkFrameRendered();
 
 #if USE_WHD
     flush_hal_patch_list();
@@ -866,7 +866,8 @@ static void DoomVideo_DrawGameplayOverlayTo(pixel_t *buffer)
 static bool DoomVideo_CanFinalizeGameplayAsync(void)
 {
 #if DOOM_RENDER_ASYNC_HUD && DOOM_VIDEO_DOUBLE_BUFFER && !DOOM_VIDEO_SYNC_FLUSH
-    return gamestate == GS_LEVEL && gametic && !automapactive && !menuactive;
+    return gamestate == GS_LEVEL && gametic && !automapactive && !menuactive
+        && !DoomPreWipe_IsPending();
 #else
     return false;
 #endif

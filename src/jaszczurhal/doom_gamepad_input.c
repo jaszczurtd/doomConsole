@@ -16,6 +16,9 @@ enum {
     ZERO2_BUTTON_A = 0x0001u,
     ZERO2_BUTTON_B = 0x0002u,
     ZERO2_BUTTON_X = 0x0008u,
+    ZERO2_BUTTON_Y = 0x0010u,
+    ZERO2_BUTTON_L = 0x0040u,
+    ZERO2_BUTTON_R = 0x0080u,
     ZERO2_BUTTON_START = 0x0800u,
     ZERO2_BUTTON_SELECT = 0x0400u,
     GAMEPAD_AXIS_ACTIVE_THRESHOLD = 16384,
@@ -95,6 +98,15 @@ static doom_input_action_mask_t map_snapshot(
     }
     if ((snapshot->buttons & ZERO2_BUTTON_SELECT) != 0u) {
         actions |= DOOM_INPUT_ACTION_BACK;
+    }
+    if ((snapshot->buttons & ZERO2_BUTTON_Y) != 0u) {
+        actions |= DOOM_INPUT_ACTION_STRAFE;
+    }
+    if ((snapshot->buttons & ZERO2_BUTTON_L) != 0u) {
+        actions |= DOOM_INPUT_ACTION_STRAFE_LEFT;
+    }
+    if ((snapshot->buttons & ZERO2_BUTTON_R) != 0u) {
+        actions |= DOOM_INPUT_ACTION_STRAFE_RIGHT;
     }
     return actions;
 }
