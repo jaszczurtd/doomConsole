@@ -40,6 +40,7 @@ class GamepadInputTests(unittest.TestCase):
                 "-Werror",
                 "-DHAL_TARGET_MOCK=1",
                 "-DHAL_ENABLE_BLUETOOTH_GAMEPAD=1",
+                "-DHAL_ENABLE_KV=1",
                 *(f"-D{define}" for define in (extra_defines or [])),
                 "-I",
                 str(REPO_ROOT / "tests" / "support"),
@@ -74,6 +75,7 @@ class GamepadInputTests(unittest.TestCase):
                 REPO_ROOT / "src" / "jaszczurhal" / "doom_gamepad_input.c",
             ],
             "doom_gamepad_input_test",
+            ["BT_AUTOMATIC_PAIRING=1"],
         )
 
     def test_manual_pairing_remains_available_when_automatic_mode_is_off(
@@ -86,6 +88,48 @@ class GamepadInputTests(unittest.TestCase):
             ],
             "doom_gamepad_manual_pairing_test",
             ["BT_AUTOMATIC_PAIRING=0"],
+        )
+
+    def test_automatic_mode_reconnects_known_peer_without_opening_pairing(
+        self,
+    ) -> None:
+        self.compile_and_run(
+            [
+                REPO_ROOT / "tests" / "doom_gamepad_input_test.c",
+                REPO_ROOT / "src" / "jaszczurhal" / "doom_gamepad_input.c",
+            ],
+            "doom_gamepad_known_peer_test",
+            ["BT_AUTOMATIC_PAIRING=1", "DOOM_TEST_START_KNOWN=1"],
+        )
+
+    def test_gamepad_remains_available_when_bond_storage_fails(self) -> None:
+        self.compile_and_run(
+            [
+                REPO_ROOT / "tests" / "doom_gamepad_input_test.c",
+                REPO_ROOT / "src" / "jaszczurhal" / "doom_gamepad_input.c",
+            ],
+            "doom_gamepad_storage_fallback_test",
+            ["DOOM_TEST_BOND_STORAGE_FAIL=1"],
+        )
+
+    def test_failed_factory_reset_blocks_automatic_reconnect(self) -> None:
+        self.compile_and_run(
+            [
+                REPO_ROOT / "tests" / "doom_gamepad_input_test.c",
+                REPO_ROOT / "src" / "jaszczurhal" / "doom_gamepad_input.c",
+            ],
+            "doom_gamepad_failed_factory_reset_test",
+            ["DOOM_TEST_FORGET_FAIL=1"],
+        )
+
+    def test_busy_factory_reset_is_retried(self) -> None:
+        self.compile_and_run(
+            [
+                REPO_ROOT / "tests" / "doom_gamepad_input_test.c",
+                REPO_ROOT / "src" / "jaszczurhal" / "doom_gamepad_input.c",
+            ],
+            "doom_gamepad_busy_factory_reset_test",
+            ["DOOM_TEST_FORGET_BUSY_ONCE=1"],
         )
 
     def test_gpio_and_gamepad_actions_are_merged(self) -> None:

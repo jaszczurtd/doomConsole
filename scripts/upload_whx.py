@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -17,8 +18,23 @@ from typing import Callable, Sequence
 DEFAULT_ADDRESS = 0x10200000
 FLASH_XIP_BASE = 0x10000000
 DEFAULT_FLASH_SIZE = 0x00400000
+PROJECT_CONFIG = Path(__file__).resolve().parent.parent / "hal_project_config.h"
 Command = list[str]
 Runner = Callable[[Sequence[str]], int | subprocess.CompletedProcess[object]]
+
+
+def configured_reserved_tail_size(config: Path = PROJECT_CONFIG) -> int:
+    pattern = re.compile(
+        r"^\s*#define\s+HAL_RP_FLASH_EEPROM_SIZE\s+"
+        r"(0[xX][0-9a-fA-F]+|[0-9]+)\s*$"
+    )
+    for line in config.read_text(encoding="utf-8").splitlines():
+        match = pattern.match(line)
+        if match is not None:
+            return int(match.group(1), 0)
+    raise RuntimeError(
+        f"HAL_RP_FLASH_EEPROM_SIZE is missing or non-numeric in {config}"
+    )
 
 
 def integer(value: str) -> int:
@@ -54,6 +70,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=integer,
         default=DEFAULT_FLASH_SIZE,
         help="Board flash capacity used for the safety check (default: 4 MiB).",
+    )
+    parser.add_argument(
+        "--reserved-tail-size",
+        type=integer,
+        default=configured_reserved_tail_size(),
+        help="Reserved application storage at the end of flash.",
+    )
+    parser.add_argument(
+        "--serial",
+        help="Select one BOOTSEL device by its RP flash serial number.",
     )
     parser.add_argument("--picotool", type=Path, help="Explicit picotool executable.")
     parser.add_argument(
@@ -132,7 +158,9 @@ def resolve_picotool(args: argparse.Namespace) -> Path:
     )
 
 
-def validate_payload(payload: Path, address: int, flash_size: int) -> None:
+def validate_payload(
+    payload: Path, address: int, flash_size: int, reserved_tail_size: int
+) -> None:
     if not payload.is_file():
         raise RuntimeError(f"WHX payload not found: {payload}")
     if address < FLASH_XIP_BASE:
@@ -141,12 +169,20 @@ def validate_payload(payload: Path, address: int, flash_size: int) -> None:
         )
     if flash_size <= 0:
         raise RuntimeError("flash size must be positive")
+    if reserved_tail_size < 0 or reserved_tail_size > flash_size:
+        raise RuntimeError("reserved tail size must fit within flash")
     payload_offset = address - FLASH_XIP_BASE
     payload_end = payload_offset + payload.stat().st_size
     if payload_end > flash_size:
         raise RuntimeError(
             f"payload ends at flash offset {payload_end:#x}, beyond "
             f"the declared {flash_size:#x}-byte flash"
+        )
+    usable_end = flash_size - reserved_tail_size
+    if payload_end > usable_end:
+        raise RuntimeError(
+            f"payload ends at flash offset {payload_end:#x}, overlapping "
+            f"the reserved tail beginning at {usable_end:#x}"
         )
 
 
@@ -156,8 +192,10 @@ def build_commands(
     address: int = DEFAULT_ADDRESS,
     *,
     reboot: bool = True,
+    serial: str | None = None,
 ) -> list[Command]:
     address_text = f"0x{address:08x}"
+    device_selection = ["--ser", serial] if serial else []
     commands = [
         [
             str(picotool),
@@ -169,6 +207,7 @@ def build_commands(
             "bin",
             "-o",
             address_text,
+            *device_selection,
         ],
         [
             str(picotool),
@@ -178,10 +217,11 @@ def build_commands(
             "bin",
             "-o",
             address_text,
+            *device_selection,
         ],
     ]
     if reboot:
-        commands.append([str(picotool), "reboot"])
+        commands.append([str(picotool), "reboot", *device_selection])
     return commands
 
 
@@ -208,7 +248,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     payload = args.payload.expanduser().resolve()
     try:
         picotool = resolve_picotool(args)
-        validate_payload(payload, args.address, args.flash_size)
+        configured_reservation = configured_reserved_tail_size()
+        if args.reserved_tail_size < configured_reservation:
+            raise RuntimeError(
+                "reserved tail size cannot be smaller than the project "
+                f"configuration ({configured_reservation:#x})"
+            )
+        validate_payload(
+            payload, args.address, args.flash_size, args.reserved_tail_size
+        )
     except RuntimeError as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
@@ -217,11 +265,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"picotool: {picotool}")
     print(f"payload:  {payload} ({payload.stat().st_size} bytes, SHA-256 {digest})")
     print(f"address:  0x{args.address:08x}")
+    print(f"reserved: {args.reserved_tail_size} bytes at the flash tail")
+    print(f"serial:   {args.serial or 'any single BOOTSEL device'}")
     print(f"reboot:   {'yes' if args.reboot else 'no'}")
     if not args.dry_run:
         print("The target board must already be in BOOTSEL mode.")
 
-    commands = build_commands(picotool, payload, args.address, reboot=args.reboot)
+    commands = build_commands(
+        picotool,
+        payload,
+        args.address,
+        reboot=args.reboot,
+        serial=args.serial,
+    )
     result = execute_commands(
         commands,
         dry_run_runner if args.dry_run else subprocess_runner,

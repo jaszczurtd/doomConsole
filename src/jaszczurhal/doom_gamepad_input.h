@@ -21,4 +21,5 @@ enum {
 
 void DoomGamepadInput_Init(void);
 void DoomGamepadInput_RequestPairing(void);
+void DoomGamepadInput_RequestForget(void);
 doom_input_action_mask_t DoomGamepadInput_Service(void);

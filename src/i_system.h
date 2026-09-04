@@ -22,7 +22,6 @@
 #define __I_SYSTEM__
 
 #include <JaszczurHAL.h>
-#include <utils/tools_api.h>
 
 #include "d_ticcmd.h"
 #include "d_event.h"

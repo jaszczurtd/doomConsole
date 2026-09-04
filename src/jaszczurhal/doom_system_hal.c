@@ -373,9 +373,19 @@ static void scroll_line() {
         entry_line++;
 }
 
-static void restart() {
-#if PICO_ON_DEVICE
+static void __attribute((noreturn)) restart(void) {
+#if JASZCZURHAL_PORT && PICO_ON_DEVICE
+    const hal_status_t status = hal_watchdog_enable(100u, false);
+    if (status != HAL_OK) {
+        derr("[system] watchdog reboot failed: %s", hal_status_to_string(status));
+    }
+    for (;;) {
+        hal_delay_ms(1000u);
+    }
+#elif PICO_ON_DEVICE
     watchdog_reboot(0, 0, 1);
+    for (;;) {
+    }
 #else
     exit(0);
 #endif
@@ -552,10 +562,8 @@ void __attribute((noreturn)) I_Quit (void)
 #if JASZCZURHAL_PORT
     D_Endoom();
     I_StopSong();
-    while (true) {
-        I_UpdateSound();
-        hal_delay_ms(1000u);
-    }
+    deb("[system] Quit Game: watchdog reboot");
+    restart();
 #else
 #if USE_PICO_NET
     piconet_stop();

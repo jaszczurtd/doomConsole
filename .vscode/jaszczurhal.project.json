@@ -32,7 +32,7 @@
         "rp2350-arm": {
             "cmake": {
                 "cache": {
-                    "JH_EXTRA_DEFINES": "HAL_ENABLE_BLUETOOTH_GAMEPAD=1"
+                    "JH_EXTRA_DEFINES": "HAL_ENABLE_BLUETOOTH_GAMEPAD=1;HAL_ENABLE_KV=1"
                 }
             }
         }

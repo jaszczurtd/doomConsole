@@ -6,6 +6,11 @@
 #define HAL_DEBUG_DEFAULT_BAUD 115200u
 #endif
 
+// Two independently erasable 4 KiB banks for persistent application KV.
+#ifndef HAL_RP_FLASH_EEPROM_SIZE
+#define HAL_RP_FLASH_EEPROM_SIZE 8192
+#endif
+
 // Enable the HAL DMA PWM audio backend for the real Doom firmware.
 #if (!defined(DOOM_BOOT_PROBE_ONLY) || !DOOM_BOOT_PROBE_ONLY) &&              \
     !defined(HAL_ENABLE_DMA_PWM_AUDIO)

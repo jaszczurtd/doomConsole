@@ -254,11 +254,21 @@ static inline uint32_t DoomEstimateRp2040SpiActualHz(uint32_t peri_hz,
 #define DOOM_GAMEPAD_PAIRING_HOLD_MS 3000u
 #endif
 
+// Hold Menu+Accept+Back to erase the persisted gamepad bond.
+#ifndef DOOM_GAMEPAD_FACTORY_RESET_HOLD_MS
+#define DOOM_GAMEPAD_FACTORY_RESET_HOLD_MS 5000u
+#endif
+
+// Application-owned hal_kv key used by the Classic bond provider.
+#ifndef DOOM_GAMEPAD_BOND_KV_KEY
+#define DOOM_GAMEPAD_BOND_KV_KEY 0xd001u
+#endif
+
 #ifndef DOOM_PAUSE_BEFORE_START
 #define DOOM_PAUSE_BEFORE_START 0
 #endif
 
-// Temporary bench mode for pairing without physical GPIO buttons.
+// Buttonless mode: open one pairing window at boot only when no bond exists.
 #ifndef BT_AUTOMATIC_PAIRING
 #define BT_AUTOMATIC_PAIRING 1
 #endif

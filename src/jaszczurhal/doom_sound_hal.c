@@ -655,3 +655,37 @@ bool I_PicoSoundFading(void)
 {
     return fade_state == FS_FADE_IN || fade_state == FS_FADE_OUT;
 }
+
+bool I_PicoSoundSuspendForFlash(void)
+{
+    if (!sound_initialized || audio_dma == NULL
+        || !hal_dma_pwm_audio_is_running(audio_dma))
+    {
+        return false;
+    }
+
+    const hal_status_t status
+        = hal_dma_pwm_audio_pause(audio_dma, DOOM_HAL_AUDIO_PWM_IDLE);
+    if (status != HAL_OK)
+    {
+        hal_derr("[audio] DMA pause for flash failed: %s",
+            hal_status_to_string(status));
+        return false;
+    }
+    return true;
+}
+
+void I_PicoSoundResumeAfterFlash(bool suspended)
+{
+    if (!suspended || !sound_initialized || audio_dma == NULL)
+    {
+        return;
+    }
+
+    const hal_status_t status = hal_dma_pwm_audio_resume(audio_dma);
+    if (status != HAL_OK)
+    {
+        hal_derr("[audio] DMA resume after flash failed: %s",
+            hal_status_to_string(status));
+    }
+}

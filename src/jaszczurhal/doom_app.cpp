@@ -1,11 +1,11 @@
 #include <JaszczurHAL.h>
 #include <hal/core/hal_app.h>
+#include <hal/core/jh_endian.h>
 #include <hal/display/hal_display.h>
 #include <hal/gpio/hal_gpio.h>
 #include <hal/serial/hal_serial.h>
 #include <hal/spi/hal_spi.h>
 #include <hal/system/hal_system.h>
-#include <utils/tools_api.h>
 
 #include <stddef.h>
 #include <stdint.h>
@@ -78,19 +78,14 @@ static bool whd_payload_magic_ok(const uint8_t *base) {
          base[2] == 'H' && base[3] == expected_kind;
 }
 
-static uint32_t boot_read_le32(const uint8_t *base) {
-  return (uint32_t)base[0] | ((uint32_t)base[1] << 8u) |
-         ((uint32_t)base[2] << 16u) | ((uint32_t)base[3] << 24u);
-}
-
 static bool whd_payload_header_ok(const uint8_t *base) {
   if (!whd_payload_magic_ok(base)) {
     return false;
   }
 
-  const uint32_t num_lumps = boot_read_le32(base + 4u);
-  const uint32_t info_table_offset = boot_read_le32(base + 8u);
-  const uint32_t payload_size = boot_read_le32(base + 12u);
+  const uint32_t num_lumps = jh_load_le32(base + 4u);
+  const uint32_t info_table_offset = jh_load_le32(base + 8u);
+  const uint32_t payload_size = jh_load_le32(base + 12u);
   const uintptr_t payload_start = (uintptr_t)base;
   const uintptr_t flash_end = (uintptr_t)DoomStorage_FlashEnd();
 
@@ -151,9 +146,9 @@ static void boot_log_payload_probe(uintptr_t address, const char *label) {
 static void boot_log_payload_header(const uint8_t *base, const char *label) {
   deb("[boot] %s at 0x%08lx: lumps=%lu table=0x%08lx size=%lu",
       label, (unsigned long)(uintptr_t)base,
-      (unsigned long)boot_read_le32(base + 4u),
-      (unsigned long)boot_read_le32(base + 8u),
-      (unsigned long)boot_read_le32(base + 12u));
+      (unsigned long)jh_load_le32(base + 4u),
+      (unsigned long)jh_load_le32(base + 8u),
+      (unsigned long)jh_load_le32(base + 12u));
 }
 
 static const uint8_t *boot_find_payload_base(void) {
@@ -194,8 +189,7 @@ static void boot_log_flash_scan(void) {
       DOOM_WHD_FLASH_ADDR + 0x00100000u,
   };
 
-  for (unsigned int i = 0; i < sizeof(scan_addresses) / sizeof(scan_addresses[0]);
-       ++i) {
+  for (unsigned int i = 0; i < COUNTOF(scan_addresses); ++i) {
     boot_log_payload_probe(scan_addresses[i],
                            scan_addresses[i] == DOOM_WHD_FLASH_ADDR ? "whx" : "xip");
   }
@@ -278,7 +272,7 @@ static void boot_log_blocked_status(uint32_t now) {
 void app_start(void) {
   hal_fault_subsystem_init();
   const bool stack_guard_ready = hal_stack_guard_init();
-  debugInit();
+  hal_debug_init_default();
   hal_deb_set_prefix("DOOM");
 
   if(DOOM_PAUSE_BEFORE_START != 0) {
@@ -365,9 +359,11 @@ void app_start(void) {
             peri_hz, DOOM_TFT_SPI_REQUEST_HZ));
   }
 #endif
-  deb("[boot] flash: xip=0x%08lx size=0x%08lx end=0x%08lx",
+  deb("[boot] flash: xip=0x%08lx size=0x%08lx data_end=0x%08lx "
+      "reserved_tail=%lu",
       (unsigned long)DOOM_FLASH_XIP_BASE, (unsigned long)DOOM_FLASH_SIZE_BYTES,
-      (unsigned long)(uintptr_t)DoomStorage_FlashEnd());
+      (unsigned long)(uintptr_t)DoomStorage_FlashEnd(),
+      (unsigned long)HAL_RP_FLASH_EEPROM_SIZE);
   deb("[boot] payload: addr=0x%08lx expected=%s WHD_SUPER_TINY=%d",
       (unsigned long)DOOM_WHD_FLASH_ADDR, expected_payload_magic(),
       (int)WHD_SUPER_TINY);

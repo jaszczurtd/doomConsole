@@ -8,8 +8,8 @@ turn is derived from [Chocolate Doom](https://github.com/chocolate-doom/chocolat
 This repository is no longer a stock `rp2040-doom` tree. The current active
 port replaces the original application-specific VGA, I2S, and TinyUSB platform
 layer with the JaszczurHAL application model, TFT output, and HAL-backed
-input, audio, and storage glue. Firmware builds through JaszczurHAL's native
-RP dispatcher and the official Pico SDK.
+GPIO and Bluetooth Classic HID gamepad input, audio, and storage. Firmware
+builds through JaszczurHAL's native RP dispatcher and the official Pico SDK.
 
 
 RP2040 ILI9341 320x200:
@@ -37,6 +37,8 @@ work, but changes the platform layer:
 - Core1 is used for asynchronous TFT flush and experimental renderer helper
   work.
 - Audio is routed through JaszczurHAL DMA PWM audio.
+- Input combines GPIO controls with an optional Bluetooth Classic HID gamepad
+  and persistent reconnect support.
 - Game data is expected as a raw WHD/WHX flash payload, separate from the UF2
   firmware image.
 - Most legacy desktop, SDL, OPL, network, setup, and old Pico SDK backend files
@@ -73,8 +75,9 @@ Common groups in `doom_main_config.h`:
 - TFT display: SPI pins, panel dimensions, rotation, color order, flush mode.
 - GPIO input: active-low mode and button pins.
 - Bluetooth input: a neighboring snapshot adapter merges Zero 2 actions with
-  GPIO. The temporary `BT_AUTOMATIC_PAIRING=1` bench setting opens pairing at
-  startup; set it to `0` to require the physical `Menu+Back` gesture.
+  GPIO. The buttonless build opens one pairing window at boot only when no bond
+  exists. A connected pad can erase its bond by holding `L+R`, then adding
+  `Select` for five seconds.
 - Audio: PWM pin, PWM resolution, block size, sample rate, mixer channels.
 - Flash/WHD: XIP base, flash size, payload address, scan step.
 - Zone/heap: Doom zone size and heap reserve.
@@ -290,8 +293,12 @@ The helper always runs `picotool load` followed by `verify`, and reboots only
 after both commands succeed. Use `--no-reboot` to keep the board in BOOTSEL or
 `--dry-run` to validate the payload, managed tool path, flash bounds and exact
 commands without accessing USB. The default safety check requires the 1.8 MiB
-payload at `0x10200000` to fit within the declared 4 MiB flash; do not use this
-flow on a 2 MiB Pico.
+payload at `0x10200000` to fit below the 8 KiB application KV reservation at
+the end of the declared 4 MiB flash; do not use this flow on a 2 MiB Pico. A
+larger build-time reservation must also be passed to the uploader with
+`--reserved-tail-size`; the helper rejects values below the project
+configuration. When more than one RP board is connected in BOOTSEL mode, pass
+`--serial <flash-id>` so load, verify and reboot all target the same board.
 
 After shared task-registry changes, regenerate and verify the tracked VS Code
 files with:

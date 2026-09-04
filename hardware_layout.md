@@ -34,12 +34,19 @@ gamepad feature. The first supported controller is an 8BitDo Zero 2 in Android
 D-input mode. GPIO and Bluetooth actions are combined, so the physical buttons
 remain usable while a controller is connected.
 
-The current buttonless bench configuration sets `BT_AUTOMATIC_PAIRING=1`, so
-startup queues a bounded 120-second pairing window as soon as the profile is
-ready. Start the Zero 2 in Android D-input mode with `B+Start`, then put it into
-pairing mode with `Select`. Set the flag to `0` to restore manual-only pairing;
-then hold the physical GPIO `Menu` and `Back` buttons together for three
-seconds to open the same window.
+The current buttonless build sets `BT_AUTOMATIC_PAIRING=1`. At startup it opens
+one bounded 120-second pairing window only when application KV has no accepted
+peer. Start the Zero 2 in Android D-input mode with `B+Start`, then press
+`Select` to pair. A stored peer takes the reconnect path without reopening the
+window. Builds with physical buttons may set the flag to `0` and hold GPIO
+`Menu+Back` for three seconds to open the same window.
+
+Once connected, hold the pad's `Start+X+Select` combination for five seconds to
+erase the accepted identity and link key. Pairing remains closed for the rest
+of that runtime; the buttonless build opens a fresh empty-bond window after a
+reboot. A physical `Menu+Accept+Back` gesture performs the same operation.
+If persistent erase fails, automatic reconnect remains blocked until the
+operator retries factory reset or explicitly starts a new pairing operation.
 
 Initial Zero 2 mapping:
 
@@ -58,9 +65,8 @@ Initial Zero 2 mapping:
 
 The adapter accepts input only after receiving a neutral snapshot for each new
 connection generation. Disconnect, queue overflow, and polling errors release
-all gamepad-owned actions. Persistent bonding across a firmware restart belongs
-to C9; during C8, restart the pairing procedure after reboot if reconnect is
-not available in the current runtime.
+all gamepad-owned actions. A valid persisted bond enables reconnect after a
+watchdog reset, cold boot, or power loss without reopening pairing.
 
 Implementation: `src/jaszczurhal/doom_gamepad_input.c`.
 
@@ -97,7 +103,9 @@ Default layout:
 | --- | ---: | --- |
 | Firmware XIP base | `0x10000000` | `DOOM_FLASH_XIP_BASE` |
 | WHD/WHDX payload | `0x10200000` | `DOOM_WHD_FLASH_ADDR` / `TINY_WAD_ADDR` |
-| Assumed flash end | `0x10400000` | `DOOM_FLASH_SIZE_BYTES=0x400000` |
+| Application data end | `0x103fe000` | First byte reserved for KV |
+| Persistent KV | `0x103fe000`-`0x10400000` | Two 4 KiB banks |
+| Physical flash end | `0x10400000` | `DOOM_FLASH_SIZE_BYTES=0x400000` |
 
 This layout requires at least 4 MB of physical flash. The included
 `doom1.whx` is about 1.8 MB, so it cannot share the original 2 MB Pico flash
@@ -106,9 +114,9 @@ with the current firmware.
 For the RP2040-Plus 4 MB verification build, select JaszczurHAL target
 `rp2040` and board profile `rp2040-plus-4mb`. The profile selects the official
 Pico SDK board definition and verifies that the target has exactly 4 MB of
-flash. The raw WHD/WHDX payload occupies the region from `0x10200000` to the
-end of that flash. Do not configure a filesystem, OTA slot, or another
-flash-backed component over this region.
+flash. The raw WHD/WHDX payload may occupy the region from `0x10200000` up to,
+but not including, the application storage reservation. The uploader enforces
+this boundary before accessing the board.
 
 Hardware bring-up sequence:
 

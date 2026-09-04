@@ -70,7 +70,7 @@ class VscodeProjectTests(unittest.TestCase):
             manifest["targetProfiles"]["rp2350-arm"]["cmake"]["cache"][
                 "JH_EXTRA_DEFINES"
             ],
-            "HAL_ENABLE_BLUETOOTH_GAMEPAD=1",
+            "HAL_ENABLE_BLUETOOTH_GAMEPAD=1;HAL_ENABLE_KV=1",
         )
         for name in ("settings.json", "tasks.json", "keybindings.reference.json"):
             content = (REPO_ROOT / ".vscode" / name).read_text(encoding="utf-8")

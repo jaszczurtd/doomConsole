@@ -23,6 +23,7 @@
 #define __DOOMTYPE__
 
 #include "config.h"
+#include <hal/core/hal_array.h>
 
 #if defined(_MSC_VER) && !defined(__cplusplus)
 #define inline __inline
@@ -151,7 +152,7 @@ typedef uint8_t isb_uint8_t;
 
 #endif
 
-#define arrlen(array) (sizeof(array) / sizeof(*array))
+#define arrlen(array) COUNTOF(array)
 
 #if USE_FLAT_MAX_256
 typedef uint8_t flatnum_t;
@@ -269,7 +270,7 @@ typedef void *shortptr_t;
 #endif
 
 #ifndef count_of
-#define count_of(a) (sizeof(a)/sizeof((a)[0]))
+#define count_of(array) COUNTOF(array)
 #endif
 
 #endif

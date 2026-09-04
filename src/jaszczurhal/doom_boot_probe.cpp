@@ -3,7 +3,6 @@
 #include <hal/gpio/hal_gpio.h>
 #include <hal/spi/hal_spi.h>
 #include <hal/system/hal_system.h>
-#include <utils/tools_api.h>
 
 #include <stdio.h>
 #include <stdint.h>
@@ -51,7 +50,7 @@ static void draw_heartbeat(uint32_t loops, uint32_t ms, bool led_state) {
 }
 
 extern "C" void app_start(void) {
-  debugInit();
+  hal_debug_init_default();
   hal_deb_set_prefix("HALPROBE");
 
   deb("");

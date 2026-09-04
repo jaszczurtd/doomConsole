@@ -88,7 +88,6 @@
 
 #if JASZCZURHAL_PORT
 #include <JaszczurHAL.h>
-#include <utils/tools_api.h>
 #define JH_BOOT_TRACE(...) deb(__VA_ARGS__)
 #else
 #define JH_BOOT_TRACE(...) ((void)0)

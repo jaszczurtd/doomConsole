@@ -13,7 +13,6 @@
 #include <string.h>
 
 #include <JaszczurHAL.h>
-#include <utils/tools_api.h>
 
 #include <hal/system/hal_sync.h>
 #include <hal/serial/hal_serial.h>
