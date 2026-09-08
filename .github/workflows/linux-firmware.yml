@@ -53,6 +53,10 @@ jobs:
           ../libraries/JaszczurHAL/vscode/entry/jh-vscode build \
             --project "$PWD" --target rp2350-arm --board pico2w
 
+      - name: Run host regression tests
+        working-directory: workspace/doomConsole
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+
       - name: Build RP2350 ARM debug firmware
         working-directory: workspace/doomConsole
         run: |

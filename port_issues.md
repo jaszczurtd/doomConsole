@@ -9,17 +9,21 @@ JaszczurHAL.
   official Pico SDK.
 - The active legacy `src/pico` directory has been removed; files still needed
   by the port now live under `src/jaszczurhal`.
-- `DOOM_DUAL_CORE_COLUMNS=1` is enabled in the test configuration.
+- The manifest and CMake default to `DOOM_DUAL_CORE_COLUMNS=0`.
 - The safe dual-core column variant is currently the post-BSP batch path: core0
   draws the left side, and core1 receives the right side after the BSP pass
   completes.
 - Producer/consumer column streaming during BSP produced a visible FPS gain,
   but also caused black artifacts and a fatal assert in `R_GetColumn`, so it is
   not safe as the current path.
-- Async TFT flush on core1 works and is part of the current model. Core0 still
-  has to respect the barrier before reusing the single framebuffer.
+- Async TFT flush runs on core1. RP2350 ILI9341 builds use two framebuffers;
+  single-buffer builds wait before reusing the framebuffer.
 
-## Known Measurements And Conclusions
+## Historical Measurements And Conclusions
+
+These observations predate the current cache index and are not a measurement
+of the current firmware. Compare builds with the same board, resolution,
+clocks, map position, and input/audio configuration.
 
 - After unlocking SPI and raising clocks, TFT transfer stopped being the main
   bottleneck. Gameplay usually sits around 10-13 FPS depending on the scene.
@@ -84,15 +88,51 @@ JaszczurHAL.
 - `ccol=queued/right/inline/core1`: column work distribution between cores.
 - `free_heap`: quick RAM budget check.
 
+## Column Cache
+
+The compact decoded-column cache uses hash chains for exact lookup and a linked
+LRU list for replacement. Hash collisions retain every cached key. Hits update
+the LRU order, and insertion happens only after successful decoding. Each core
+owns its index and pixel slots; this also applies to the queued column mode.
+The index keeps the configured capacity and avoids full-cache lookup and
+replacement scans. Tall columns retain their separate transient cache.
+
+Host regression tests compare hits, misses, and selected pixel slots against
+the previous LRU implementation, including collisions and independent owners:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+To compare cache lookup and replacement costs on the host:
+
+```bash
+cc -std=c17 -O2 -Isrc tests/doom_column_cache_test.c -o .build/column-cache-test
+.build/column-cache-test --benchmark
+```
+
+This synthetic benchmark excludes texture decoding, drawing, and TFT transfer.
+Measure gameplay FPS and `tus=bsp` on the device to assess the frame-rate gain.
+
+## TFT Clock
+
+`JH_ILI9341_SPI_DEFAULT_HZ` in the manifest selects the requested clock for both
+supported TFT families. The recipe passes it to the HAL library as
+`JH_ILI9341_SPI_DEFAULT_HZ` and `JH_ST77XX_SPI_DEFAULT_HZ`; the application
+inherits the same definitions. Defining these only on the firmware target
+leaves the separately compiled HAL drivers at their default clocks and makes
+the boot-time estimate misleading. The actual SPI rate also depends on the
+peripheral clock and available divisors.
+
 ## Performance Continuation Plan
 
 ### 1. Establish A Stable Baseline
 
-- Build and test with `DOOM_DUAL_CORE_COLUMNS=1`, but without streaming during
-  BSP.
+- Start with the manifest's default single-core columns. Compare queued
+  dual-core columns separately, without streaming during BSP.
 - Collect logs from the same map locations for several heavy and light frames.
 - Compare mainly `fps`, `tus=bsp`, `pcache`, `ccol`, `casync`, and `black`.
-- Keep the current post-BSP batch path as the reference variant.
+- Keep resolution, clocks, and renderer flags identical between cache builds.
 
 ### 2. Diagnose What Exactly Breaks Streaming
 
@@ -153,15 +193,14 @@ JaszczurHAL.
 - `texfail=0`, `flatfail=0`, and `pdrop=0` remain true.
 - `tus=bsp` drops in comparable scenes.
 - FPS rises by at least a few stable frames, not only in one favorable view.
-- The build passes cleanly for:
-  `cmake -S . -B .build/cmake -DDOOM_DUAL_CORE_COLUMNS=1`,
-  `cmake --build .build/cmake --target firmware`,
-  `cmake --build .build/cmake --target firmware_compile_db`.
+- Build firmware and refresh the compile database through
+  `../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project .` and
+  `../libraries/JaszczurHAL/vscode/entry/jh-vscode refresh-intellisense --project .`.
 
 ## Nearest Concrete Step
 
-The most sensible next step is a diagnostic return to column streaming, but
-with a hard constraint: core1 must not perform lazy lookups or touch global
-WAD/WHD/zone cache. First, determine the minimal data set that core0 can safely
-prepare for a right-side column and that core1 can draw without entering
-`R_GetColumn`/framedrawable lookup during BSP.
+Profile texture decoding in heavy scenes with the configured TFT clock applied
+to the HAL drivers. Keep matching `fps`, `tus=bsp`, cache hits/misses, and
+failure-counter logs for future comparisons. Column streaming still requires
+ready data that avoids `R_GetColumn`, lazy lookups, and global WAD/WHD/zone cache
+access on core1 during BSP.

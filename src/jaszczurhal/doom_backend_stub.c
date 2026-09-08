@@ -33,6 +33,15 @@
 #include "image_decoder.h"
 #include "doom_main_config.h"
 
+#if DOOM_DUAL_CORE_COLUMNS
+#define DOOM_COLUMN_CACHE_CAPACITY \
+    (HAL_PATCH_COLUMN_CACHE_SLOTS / HAL_PATCH_COLUMN_CACHE_CORES + \
+     HAL_PATCH_COLUMN_CACHE_SLOTS % HAL_PATCH_COLUMN_CACHE_CORES)
+#else
+#define DOOM_COLUMN_CACHE_CAPACITY HAL_PATCH_COLUMN_CACHE_SLOTS
+#endif
+#include "doom_column_cache.h"
+
 // Dual-core wall/sky/midtex column rendering.  When enabled, pd_add_column()
 // enqueues column descriptors during BSP instead of decoding+drawing inline;
 // the queue is drained (Stage 1: on core0; Stage 3: split across both cores)
@@ -92,15 +101,9 @@ static uint8_t
 #else
 static uint8_t s_patch_column_uncached[HAL_PATCH_COLUMN_MAX_HEIGHT];
 #endif
-static int32_t s_patch_column_cache_lump[HAL_PATCH_COLUMN_CACHE_SLOTS];
-static uint16_t s_patch_column_cache_col[HAL_PATCH_COLUMN_CACHE_SLOTS];
+static doom_column_cache_t s_patch_column_index[HAL_PATCH_COLUMN_CACHE_CORES];
 static uint16_t s_patch_column_cache_height[HAL_PATCH_COLUMN_CACHE_SLOTS];
-static uint32_t s_patch_column_cache_age[HAL_PATCH_COLUMN_CACHE_SLOTS];
 static uint32_t s_patch_column_cache_clock[HAL_PATCH_COLUMN_CACHE_CORES];
-static uint8_t
-    s_patch_column_cache_hash[HAL_PATCH_COLUMN_CACHE_CORES]
-                             [HAL_PATCH_COLUMN_CACHE_HASH_SIZE];
-static uint8_t s_patch_column_cache_valid[HAL_PATCH_COLUMN_CACHE_SLOTS];
 #if !DOOM_DUAL_CORE_COLUMNS
 static int32_t s_patch_tall_cache_lump[HAL_PATCH_TALL_CACHE_SLOTS];
 static uint16_t s_patch_tall_cache_col[HAL_PATCH_TALL_CACHE_SLOTS];
@@ -1296,15 +1299,6 @@ static bool decode_composite_column_uncached(unsigned core, int texture_num,
     return false;
 }
 
-static unsigned patch_column_cache_hash(int lump, uint16_t col)
-{
-    uint32_t key = (uint32_t)lump;
-    key ^= (uint32_t)col * 40503u;
-    key *= 2654435761u;
-    key ^= key >> 16;
-    return key & (HAL_PATCH_COLUMN_CACHE_HASH_SIZE - 1u);
-}
-
 #if DOOM_DUAL_CORE_COLUMNS
 static unsigned patch_column_cache_core(void)
 {
@@ -1349,14 +1343,6 @@ static uint8_t *patch_column_cache_scratch(unsigned core)
     (void)core;
     return s_patch_column_uncached;
 #endif
-}
-
-static bool patch_column_cache_slot_matches(unsigned slot, int lump,
-                                            uint16_t col)
-{
-    return s_patch_column_cache_valid[slot] &&
-           s_patch_column_cache_lump[slot] == lump &&
-           s_patch_column_cache_col[slot] == col;
 }
 
 static void patch_tall_cache_record_height(int height)
@@ -1511,6 +1497,7 @@ static bool decode_patch_column(texturecolumn_t source,
     const unsigned core = patch_column_cache_core();
     const unsigned slot_begin = patch_column_cache_range_start(core);
     const unsigned slot_end = patch_column_cache_range_end(core);
+    doom_column_cache_t *index = &s_patch_column_index[core];
     uint8_t *scratch = patch_column_cache_scratch(core);
     int lump;
     uint16_t col;
@@ -1528,40 +1515,18 @@ static bool decode_patch_column(texturecolumn_t source,
     }
 
     if (++s_patch_column_cache_clock[core] == 0u) {
-        for (unsigned i = slot_begin; i < slot_end; ++i) {
-            s_patch_column_cache_age[i] = 0u;
-        }
         s_patch_column_cache_clock[core] = 1u;
     }
 
-    const unsigned hash = patch_column_cache_hash(lump, col);
-    const unsigned hinted_slot = s_patch_column_cache_hash[core][hash];
-    if (hinted_slot > 0u) {
-        const unsigned slot = slot_begin + hinted_slot - 1u;
-        if (slot < slot_end &&
-            patch_column_cache_slot_matches(slot, lump, col)) {
-            s_patch_column_cache_age[slot] = s_patch_column_cache_clock[core];
-            *pixels_out = s_patch_column_cache[slot];
-            *height_out = s_patch_column_cache_height[slot];
-            if (s_debug_patch_cache_hits != UINT16_MAX) {
-                ++s_debug_patch_cache_hits;
-            }
-            return true;
+    const int cached_slot = DoomColumnCache_Find(index, lump, col);
+    if (cached_slot >= 0) {
+        const unsigned slot = slot_begin + (unsigned)cached_slot;
+        *pixels_out = s_patch_column_cache[slot];
+        *height_out = s_patch_column_cache_height[slot];
+        if (s_debug_patch_cache_hits != UINT16_MAX) {
+            ++s_debug_patch_cache_hits;
         }
-    }
-
-    for (unsigned slot = slot_begin; slot < slot_end; ++slot) {
-        if (patch_column_cache_slot_matches(slot, lump, col)) {
-            s_patch_column_cache_age[slot] = s_patch_column_cache_clock[core];
-            s_patch_column_cache_hash[core][hash] =
-                (uint8_t)(slot - slot_begin + 1u);
-            *pixels_out = s_patch_column_cache[slot];
-            *height_out = s_patch_column_cache_height[slot];
-            if (s_debug_patch_cache_hits != UINT16_MAX) {
-                ++s_debug_patch_cache_hits;
-            }
-            return true;
-        }
+        return true;
     }
 
     if (patch_tall_cache_lookup(core, lump, col, pixels_out, height_out)) {
@@ -1590,27 +1555,11 @@ static bool decode_patch_column(texturecolumn_t source,
         return true;
     }
 
-    unsigned slot = 0;
-    uint32_t oldest_age = UINT32_MAX;
-    for (unsigned i = slot_begin; i < slot_end; ++i) {
-        if (!s_patch_column_cache_valid[i]) {
-            slot = i;
-            break;
-        }
-        if (s_patch_column_cache_age[i] < oldest_age) {
-            oldest_age = s_patch_column_cache_age[i];
-            slot = i;
-        }
-    }
+    const unsigned slot = slot_begin +
+        DoomColumnCache_Insert(index, slot_end - slot_begin, lump, col);
 
     memcpy(s_patch_column_cache[slot], scratch, (size_t)decoded_height);
-    s_patch_column_cache_lump[slot] = lump;
-    s_patch_column_cache_col[slot] = col;
     s_patch_column_cache_height[slot] = (uint16_t)decoded_height;
-    s_patch_column_cache_age[slot] = s_patch_column_cache_clock[core];
-    s_patch_column_cache_valid[slot] = 1u;
-    s_patch_column_cache_hash[core][hash] =
-        (uint8_t)(slot - slot_begin + 1u);
     *pixels_out = s_patch_column_cache[slot];
     *height_out = decoded_height;
     if (s_debug_patch_cache_misses != UINT16_MAX) {
