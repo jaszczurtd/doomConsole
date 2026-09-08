@@ -47,7 +47,7 @@ class TftClockTests(unittest.TestCase):
                     build = source / panel
                     for command in (
                         ["cmake", "-S", str(source), "-B", str(build),
-                         f"-DJH_PROJECT_DIR={root}", "-DJH_TARGET=rp2350-arm",
+                         f"-DJH_PROJECT_DIR:PATH={root}", "-DJH_TARGET=rp2350-arm",
                          f"-DDOOM_TFT_PANEL={panel}", "-DDOOM_HIGHRES_SCENE=1",
                          "-DJH_ILI9341_SPI_DEFAULT_HZ=50000000"],
                         ["cmake", "--build", str(build), "--target", "clock_consumer"],
