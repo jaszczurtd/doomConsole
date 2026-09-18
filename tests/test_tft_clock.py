@@ -24,10 +24,10 @@ class TftClockTests(unittest.TestCase):
             )
             # The SDK integration consumes EXTRA_HAL_DEFINES when it creates
             # the library and publishes those definitions to its consumers.
-            (source / "cmake" / "jh_rp_native_sdk.cmake").write_text(
+            (source / "cmake" / "jh_rp_pico_sdk.cmake").write_text(
                 'add_library(JaszczurHAL STATIC "${JH_ROOT}/clock.c")\n'
                 'target_compile_definitions(JaszczurHAL PUBLIC ${EXTRA_HAL_DEFINES})\n'
-                'function(jh_add_rp_native_firmware name)\n'
+                'function(jh_add_rp_pico_firmware name)\n'
                 '  target_link_libraries(${name} PRIVATE JaszczurHAL)\n'
                 'endfunction()\n', encoding="utf-8"
             )

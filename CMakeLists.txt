@@ -305,7 +305,7 @@ set(EXTRA_HAL_DEFINES ${JH_EXTRA_DEFINES}
     JH_ST77XX_SPI_DEFAULT_HZ=${JH_ILI9341_SPI_DEFAULT_HZ}
 )
 set(JH_RP_BOARD_DEFINES ${JH_BOARD_COMPILE_DEFINITIONS})
-include("${JH_ROOT}/cmake/jh_rp_native_sdk.cmake")
+include("${JH_ROOT}/cmake/jh_rp_pico_sdk.cmake")
 
 set(DOOM_PORT_SOURCE_PATHS)
 foreach(_src IN LISTS DOOM_PORT_SOURCES)
@@ -329,7 +329,7 @@ target_compile_options(firmware PRIVATE
     "$<$<COMPILE_LANGUAGE:C>:${DOOM_PORT_C_WARNING_FLAGS}>"
     "$<$<COMPILE_LANGUAGE:CXX>:${DOOM_PORT_WARNING_FLAGS}>"
 )
-jh_add_rp_native_firmware(firmware)
+jh_add_rp_pico_firmware(firmware)
 target_sources(JaszczurHAL PRIVATE
     "${JH_BOARD_GENERATED_DIR}/jh_link_contract_definition.c")
 target_include_directories(JaszczurHAL PUBLIC "${JH_BOARD_GENERATED_DIR}")
