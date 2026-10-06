@@ -95,36 +95,30 @@ VS Code uses the shared JaszczurHAL entrypoint:
 ../libraries/JaszczurHAL/vscode/entry/jh-vscode
 ```
 
-The firmware module contract lives in `.vscode/jaszczurhal.project.json`.
-That manifest is the source of truth for the target, board profile, generated
-CMake build directory, USB identity, artifacts, and Doom-specific CMake cache
-values.
-The most useful Doom CMake cache keys are:
+The tooling metadata (target, board profile, CMake build directory, USB
+identity, artifacts) lives in `.vscode/jaszczurhal.project.json`. The build
+options live in `hal_project_config.h`, which the HAL, the recipe and the
+tooling read the same way:
 
-- `DOOM_TFT_PANEL` - display driver, either `ili9341` or `st7796s`.
 - `DOOM_HIGHRES_SCENE` - render the scene at the full panel resolution:
-  `320x240` on ILI9341 or `480x320` on ST7796S.  The ST7796S path is supported
-  only for RP2350/Pico 2.
-- `JH_ILI9341_SPI_DEFAULT_HZ` - requested TFT SPI clock.
-- `DOOM_SYS_CLOCK_KHZ` - RP2040/RP2350 system clock request.
+  `320x240` on ILI9341 or `480x320` on ST7796S.
+- `JH_ILI9341_SPI_DEFAULT_HZ` - requested TFT SPI clock for both panel
+  families.
 - `DOOM_DUAL_CORE_COLUMNS`, `DOOM_RENDER_ASYNC_PLANES`,
   `DOOM_VIDEO_SYNC_FLUSH` - renderer/flush experiments; the default active
   values are conservative.
 
-To use the classic ILI9341 path, keep highres disabled:
+The system clock request (`DOOM_SYS_CLOCK_KHZ`) is chosen per chip in
+`doom_main_config.h`.
 
-```json
-{
-    "cmake": {
-        "cache": {
-            "DOOM_TFT_PANEL": "ili9341",
-            "DOOM_HIGHRES_SCENE": "0"
-        }
-    }
-}
-```
+The header also declares two variants, built with `--variant <id>` (or the
+`Project: Build variant` tasks):
 
-This works on RP2040 and RP2350 builds. For a Raspberry Pi Pico, select the
+- `ST7796S` - the ST7796S panel instead of the ILI9341; RP2350/Pico 2 only.
+- `BOOT_PROBE` - a minimal `app_start`/`app_task0` smoke-test firmware.
+
+To use the classic ILI9341 path, set `DOOM_HIGHRES_SCENE` to `0` in
+`hal_project_config.h`. This works on RP2040 and RP2350 builds. For a Raspberry Pi Pico, select the
 native RP2040 target and its `pico` board profile:
 
 ```json
@@ -164,7 +158,7 @@ enable highres:
 }
 ```
 
-`st7796s` is intentionally rejected for RP2040 targets.  The ST7796S full-panel
+`ST7796S` is intentionally rejected for RP2040 targets.  The ST7796S full-panel
 framebuffer and flush buffers are RP2350-only.
 
 After changing the manifest, regenerate the CMake cache and rebuild:

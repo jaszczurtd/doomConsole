@@ -18,14 +18,13 @@ if(JH_PICOTOOL_EXECUTABLE AND NOT TARGET picotool)
         IMPORTED_LOCATION "${JH_PICOTOOL_EXECUTABLE}")
 endif()
 
-set(DOOM_BOOT_PROBE_ONLY OFF CACHE BOOL "Build a minimal app_start/app_task0 smoke-test firmware")
-set(DOOM_DUAL_CORE_COLUMNS "0" CACHE STRING "Enable queued wall-column rendering path for staged dual-core work")
-set(DOOM_RENDER_ASYNC_PLANES "0" CACHE STRING "Render visplanes on core1 concurrently with core0 columns/sprites")
-set(DOOM_VIDEO_SYNC_FLUSH "0" CACHE STRING "Diagnostic: flush the TFT synchronously on core0 instead of async on core1")
-set(DOOM_TFT_PANEL "ili9341" CACHE STRING "TFT panel driver: ili9341 or st7796s (ST7796S is RP2350-only)")
-set(DOOM_HIGHRES_SCENE "0" CACHE STRING "Render the 3D scene at the full TFT panel resolution (ILI9341 320x240, ST7796S 480x320)")
-set(DOOM_SYS_CLOCK_KHZ "250000" CACHE STRING "System clock (kHz) applied at boot; the VS Code manifest should set the target-specific value")
-set(JH_ILI9341_SPI_DEFAULT_HZ "41666666" CACHE STRING "Requested TFT SPI clock (Hz); actual = clk_peri / even divisor")
+# The Doom build options live in hal_project_config.h; read them through the
+# project configuration the dispatcher evaluated for this target and variant.
+foreach(_option DOOM_BOOT_PROBE_ONLY DOOM_DUAL_CORE_COLUMNS
+        DOOM_RENDER_ASYNC_PLANES DOOM_VIDEO_SYNC_FLUSH DOOM_HIGHRES_SCENE)
+    jh_project_value(${_option} ${_option})
+endforeach()
+jh_project_defined(DOOM_TFT_PANEL_IS_ST7796S DOOM_TFT_PANEL_ST7796S)
 set(GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY "${GENERATED_DIR}")
 
@@ -102,56 +101,16 @@ endif()
 
 list(REMOVE_DUPLICATES DOOM_PORT_SOURCES)
 
-if(DOOM_BOOT_PROBE_ONLY)
-    set(DOOM_BOOT_PROBE_DEFINE DOOM_BOOT_PROBE_ONLY=1)
-else()
-    set(DOOM_BOOT_PROBE_DEFINE DOOM_BOOT_PROBE_ONLY=0)
-endif()
-
-foreach(_flag DOOM_DUAL_CORE_COLUMNS DOOM_RENDER_ASYNC_PLANES DOOM_VIDEO_SYNC_FLUSH)
+foreach(_flag DOOM_BOOT_PROBE_ONLY DOOM_DUAL_CORE_COLUMNS DOOM_RENDER_ASYNC_PLANES
+        DOOM_VIDEO_SYNC_FLUSH DOOM_HIGHRES_SCENE)
     if(NOT ${_flag} MATCHES "^[01]$")
         message(FATAL_ERROR "${_flag} must be 0 or 1 (got '${${_flag}}')")
     endif()
 endforeach()
 
-if(NOT DOOM_HIGHRES_SCENE MATCHES "^[01]$")
-    message(FATAL_ERROR "DOOM_HIGHRES_SCENE must be 0 or 1 (got '${DOOM_HIGHRES_SCENE}')")
-endif()
-
-string(TOLOWER "${DOOM_TFT_PANEL}" DOOM_TFT_PANEL_NORMALIZED)
-if(NOT DOOM_TFT_PANEL_NORMALIZED MATCHES "^(ili9341|st7796s)$")
-    message(FATAL_ERROR "DOOM_TFT_PANEL must be 'ili9341' or 'st7796s' (got '${DOOM_TFT_PANEL}')")
-endif()
-
-set(DOOM_TARGET_IS_RP2350 OFF)
-if(JH_TARGET MATCHES "^rp2350-")
-    set(DOOM_TARGET_IS_RP2350 ON)
-endif()
-
-set(DOOM_TFT_DEFINES)
-if(DOOM_TFT_PANEL_NORMALIZED STREQUAL "st7796s")
-    if(NOT DOOM_TARGET_IS_RP2350)
-        message(FATAL_ERROR "DOOM_TFT_PANEL=st7796s is supported only for RP2350/Pico 2 builds")
-    endif()
-    list(APPEND DOOM_TFT_DEFINES
-        DOOM_TFT_PANEL_ST7796S=1
-        HAL_ENABLE_ST7796S
-        HAL_DISPLAY_ST7796S
-    )
-else()
-    list(APPEND DOOM_TFT_DEFINES
-        DOOM_TFT_PANEL_ILI9341=1
-        HAL_ENABLE_ILI9341
-        HAL_DISPLAY_ILI9341
-    )
-endif()
-
 set(DOOM_SCREEN_DEFINES)
 if(DOOM_HIGHRES_SCENE STREQUAL "1")
-    if(DOOM_TFT_PANEL_NORMALIZED STREQUAL "st7796s")
-        if(NOT DOOM_TARGET_IS_RP2350)
-            message(FATAL_ERROR "DOOM_HIGHRES_SCENE=1 with ST7796S is supported only for RP2350/Pico 2 builds")
-        endif()
+    if(DOOM_TFT_PANEL_IS_ST7796S)
         list(APPEND DOOM_SCREEN_DEFINES
             DOOM_HIGHRES_SCENE=1
             SCREENWIDTH=480
@@ -175,10 +134,14 @@ else()
     )
 endif()
 
+if(NOT DOOM_TFT_PANEL_IS_ST7796S)
+    set(DOOM_TFT_DEFINES DOOM_TFT_PANEL_ILI9341=1)
+endif()
+
 set(DOOM_PORT_DEFINES
     ${DOOM_TFT_DEFINES}
     ${DOOM_SCREEN_DEFINES}
-    ${DOOM_BOOT_PROBE_DEFINE}
+    DOOM_BOOT_PROBE_ONLY=${DOOM_BOOT_PROBE_ONLY}
     DOOM_ONLY=1
     DOOM_SMALL=1
     DOOM_TINY=1
@@ -192,7 +155,6 @@ set(DOOM_PORT_DEFINES
     DOOM_RENDER_ASYNC_PLANES=${DOOM_RENDER_ASYNC_PLANES}
     DOOM_VIDEO_SYNC_FLUSH=${DOOM_VIDEO_SYNC_FLUSH}
     DOOM_DUAL_CORE_COLUMNS=${DOOM_DUAL_CORE_COLUMNS}
-    DOOM_SYS_CLOCK_KHZ=${DOOM_SYS_CLOCK_KHZ}
     DOOM_SPRITE_OCCLUSION=0
     SHRINK_MOBJ=1
     FLOOR_CEILING_CLIP_8BIT=0
@@ -299,11 +261,8 @@ set(DOOM_PORT_C_WARNING_FLAGS
 )
 
 set(HAL_PROJECT_CONFIG_DIR "${JH_PROJECT_DIR}")
-# Compile the TFT clock into the HAL drivers and propagate it to Doom.
-set(EXTRA_HAL_DEFINES ${JH_EXTRA_DEFINES}
-    JH_ILI9341_SPI_DEFAULT_HZ=${JH_ILI9341_SPI_DEFAULT_HZ}
-    JH_ST77XX_SPI_DEFAULT_HZ=${JH_ILI9341_SPI_DEFAULT_HZ}
-)
+# The variant's definitions reach the HAL and, through it, the Doom sources.
+set(EXTRA_HAL_DEFINES ${JH_PROJECT_DEFINITIONS})
 set(JH_RP_BOARD_DEFINES ${JH_BOARD_COMPILE_DEFINITIONS})
 include("${JH_ROOT}/cmake/jh_rp_pico_sdk.cmake")
 

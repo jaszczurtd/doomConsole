@@ -9,7 +9,7 @@ JaszczurHAL.
   official Pico SDK.
 - The active legacy `src/pico` directory has been removed; files still needed
   by the port now live under `src/jaszczurhal`.
-- The manifest and CMake default to `DOOM_DUAL_CORE_COLUMNS=0`.
+- `hal_project_config.h` defaults to `DOOM_DUAL_CORE_COLUMNS=0`.
 - The safe dual-core column variant is currently the post-BSP batch path: core0
   draws the left side, and core1 receives the right side after the BSP pass
   completes.
@@ -116,19 +116,17 @@ Measure gameplay FPS and `tus=bsp` on the device to assess the frame-rate gain.
 
 ## TFT Clock
 
-`JH_ILI9341_SPI_DEFAULT_HZ` in the manifest selects the requested clock for both
-supported TFT families. The recipe passes it to the HAL library as
-`JH_ILI9341_SPI_DEFAULT_HZ` and `JH_ST77XX_SPI_DEFAULT_HZ`; the application
-inherits the same definitions. Defining these only on the firmware target
-leaves the separately compiled HAL drivers at their default clocks and makes
-the boot-time estimate misleading. The actual SPI rate also depends on the
-peripheral clock and available divisors.
+`JH_ILI9341_SPI_DEFAULT_HZ` in `hal_project_config.h` selects the requested
+clock for both supported TFT families; the header sets
+`JH_ST77XX_SPI_DEFAULT_HZ` to the same value. The HAL drivers and the
+application read the same header, so both use that clock. The actual SPI rate
+also depends on the peripheral clock and available divisors.
 
 ## Performance Continuation Plan
 
 ### 1. Establish A Stable Baseline
 
-- Start with the manifest's default single-core columns. Compare queued
+- Start with the default single-core columns. Compare queued
   dual-core columns separately, without streaming during BSP.
 - Collect logs from the same map locations for several heavy and light frames.
 - Compare mainly `fps`, `tus=bsp`, `pcache`, `ccol`, `casync`, and `black`.

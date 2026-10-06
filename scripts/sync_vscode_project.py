@@ -87,6 +87,7 @@ def main(argv: list[str]) -> int:
         str(manifest["board"]),
         module=str(manifest["module"]),
         usb_product=str(identity.get("usbProduct") or ""),
+        project_dir=REPO_ROOT,
     )
     insertion = next(
         (

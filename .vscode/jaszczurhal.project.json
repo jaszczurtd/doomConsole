@@ -11,30 +11,13 @@
         "sourceDir": "${project}/../libraries/JaszczurHAL/cmake/jh_firmware_project",
         "cache": {
             "JH_PROJECT_DIR": "${project}",
-            "JH_PROJECT_RECIPE": "${project}/CMakeLists.txt",
-            "DOOM_BOOT_PROBE_ONLY": false,
-            "DOOM_DUAL_CORE_COLUMNS": "0",
-            "DOOM_RENDER_ASYNC_PLANES": "0",
-            "DOOM_VIDEO_SYNC_FLUSH": "0",
-            "DOOM_TFT_PANEL": "ili9341",
-            "DOOM_HIGHRES_SCENE": "1",
-            "DOOM_SYS_CLOCK_KHZ": "300000",
-            "JH_ILI9341_SPI_DEFAULT_HZ": "50000000"
+            "JH_PROJECT_RECIPE": "${project}/CMakeLists.txt"
         },
         "targets": {
             "build": "firmware",
             "buildDebug": "firmware_debug",
             "upload": "firmware_upload",
             "compileDb": "firmware_compile_db"
-        }
-    },
-    "targetProfiles": {
-        "rp2350-arm": {
-            "cmake": {
-                "cache": {
-                    "JH_EXTRA_DEFINES": "HAL_ENABLE_BLUETOOTH_GAMEPAD=1;HAL_ENABLE_KV=1"
-                }
-            }
         }
     },
     "identity": {

@@ -1,5 +1,7 @@
 #include "jaszczurhal/doom_gamepad_input.h"
 
+#include <hal/core/hal_config.h>
+
 #ifdef HAL_ENABLE_BLUETOOTH_GAMEPAD
 
 #include <stdbool.h>
