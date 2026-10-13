@@ -51,7 +51,7 @@ jobs:
         run: |
           set -eux
           ../libraries/JaszczurHAL/vscode/entry/jh-vscode build \
-            --project "$PWD" --target rp2350-arm --board pico2w
+            --project "$PWD" --assembly pico2w
 
       - name: Run host regression tests
         working-directory: workspace/doomConsole
@@ -62,23 +62,23 @@ jobs:
         run: |
           set -eux
           ../libraries/JaszczurHAL/vscode/entry/jh-vscode build-debug \
-            --project "$PWD" --target rp2350-arm --board pico2w
+            --project "$PWD" --assembly pico2w
 
       - name: Refresh IntelliSense database
         working-directory: workspace/doomConsole
         run: |
           set -eux
           ../libraries/JaszczurHAL/vscode/entry/jh-vscode refresh-intellisense \
-            --project "$PWD" --target rp2350-arm --board pico2w
+            --project "$PWD" --assembly pico2w
 
       - name: Collect firmware artifacts
         working-directory: workspace/doomConsole
         run: |
           set -eux
           mkdir -p .build/ci-artifacts
-          cp .build/firmware.elf .build/ci-artifacts/doom-console-rp2350-arm.elf
-          cp .build/firmware.uf2 .build/ci-artifacts/doom-console-rp2350-arm.uf2
-          cp .build/compile_commands_patched.json .build/ci-artifacts/
+          cp .build/rp2350-arm/pico2w/firmware.elf .build/ci-artifacts/doom-console-rp2350-arm.elf
+          cp .build/rp2350-arm/pico2w/firmware.uf2 .build/ci-artifacts/doom-console-rp2350-arm.uf2
+          cp .build/rp2350-arm/pico2w/compile_commands_patched.json .build/ci-artifacts/
 
       - name: Verify checkout stayed clean
         working-directory: workspace/doomConsole

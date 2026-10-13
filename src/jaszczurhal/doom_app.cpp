@@ -11,9 +11,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-/* Raise clk_peri so the TFT SPI bus can run at its proper speed.  Arduino-Pico
- * leaves clk_peri on PLL_USB (48 MHz), which caps SPI at 24 MHz regardless of
- * the requested clock or the CPU clock.  USB CDC (console) is on PLL_USB and
+/* Raise clk_peri so the TFT SPI bus can run at its proper speed.  The Pico
+ * SDK's set_sys_clock_khz() moves clk_peri to PLL_USB (48 MHz), which caps SPI
+ * at 24 MHz regardless of the requested clock or the CPU clock.  USB CDC (console) is on PLL_USB and
  * unaffected; PWM audio is on clk_sys and unaffected. */
 #if __has_include(<hardware/clocks.h>)
 #include <hardware/clocks.h>
@@ -319,8 +319,8 @@ void app_start(void) {
 #endif
 
 #if DOOM_SYS_OVERCLOCK && defined(DOOM_HAVE_PICO_CLOCKS)
-  // Native rp2040-doom raises the core to 270 MHz @ 1.30V; the Arduino-Pico core
-  // boots at 125 MHz and the port's own overclock (src/i_main.c) is compiled out
+  // Native rp2040-doom raises the core to 270 MHz @ 1.30V; the Pico SDK boots
+  // at its default clock and the port's own overclock (src/i_main.c) is compiled out
   // for JASZCZURHAL_PORT.  Re-issue it here: bump voltage first, then clock,
   // before any peripheral (SPI/TFT) is configured.  clk_peri is retied to
   // clk_sys just below, so the TFT SPI bus scales with the new system clock.
@@ -372,20 +372,23 @@ void app_start(void) {
   deb("[boot] LED pin=%u initialized", (unsigned int)DOOM_BOOT_LED_PIN);
 
   deb("[boot] TFT pins: sck=%u mosi=%u miso=%u cs=%u dc=%u rst=%u",
-      (unsigned int)DOOM_HAL_TFT_SCK_PIN,
-      (unsigned int)DOOM_HAL_TFT_MOSI_PIN,
-      (unsigned int)DOOM_HAL_TFT_MISO_PIN, (unsigned int)DOOM_HAL_TFT_CS_PIN,
-      (unsigned int)DOOM_HAL_TFT_DC_PIN, (unsigned int)DOOM_HAL_TFT_RST_PIN);
+      (unsigned int)JH_HW_BUS_SPI_PIN_SCK,
+      (unsigned int)JH_HW_BUS_SPI_PIN_MOSI,
+      (unsigned int)JH_HW_BUS_SPI_PIN_MISO,
+      (unsigned int)JH_HW_NODE_TFT_PIN_CS,
+      (unsigned int)JH_HW_NODE_TFT_DC_PIN_OUT,
+      (unsigned int)JH_HW_NODE_TFT_RESET_PIN_OUT);
   deb("[boot] SPI init begin: bus=0 miso=%u mosi=%u sck=%u",
-      (unsigned int)DOOM_HAL_TFT_MISO_PIN,
-      (unsigned int)DOOM_HAL_TFT_MOSI_PIN,
-      (unsigned int)DOOM_HAL_TFT_SCK_PIN);
-  hal_spi_init(0u, (uint8_t)DOOM_HAL_TFT_MISO_PIN,
-               (uint8_t)DOOM_HAL_TFT_MOSI_PIN,
-               (uint8_t)DOOM_HAL_TFT_SCK_PIN);
+      (unsigned int)JH_HW_BUS_SPI_PIN_MISO,
+      (unsigned int)JH_HW_BUS_SPI_PIN_MOSI,
+      (unsigned int)JH_HW_BUS_SPI_PIN_SCK);
+  hal_spi_init(JH_HW_BUS_SPI_INDEX, (uint8_t)JH_HW_BUS_SPI_PIN_MISO,
+               (uint8_t)JH_HW_BUS_SPI_PIN_MOSI,
+               (uint8_t)JH_HW_BUS_SPI_PIN_SCK);
   deb("[boot] TFT init begin");
-  hal_display_init((uint8_t)DOOM_HAL_TFT_CS_PIN, (uint8_t)DOOM_HAL_TFT_DC_PIN,
-                   (uint8_t)DOOM_HAL_TFT_RST_PIN);
+  hal_display_init((uint8_t)JH_HW_NODE_TFT_PIN_CS,
+                   (uint8_t)JH_HW_NODE_TFT_DC_PIN_OUT,
+                   (uint8_t)JH_HW_NODE_TFT_RESET_PIN_OUT);
   s_display_available =
       hal_display_configure(DOOM_HAL_TFT_NATIVE_WIDTH,
                             DOOM_HAL_TFT_NATIVE_HEIGHT,

@@ -1,7 +1,7 @@
 #pragma once
 
 /* Variants: id, description and the definitions each one adds to this
- * configuration. */
+ * configuration. The board and wiring come from device_tree.json. */
 #define JH_PROJECT_VARIANTS(X)                                                \
     X(BOOT_PROBE, "Minimal app_start/app_task0 smoke test",                   \
       DOOM_BOOT_PROBE_ONLY=1)                                                 \
@@ -68,10 +68,11 @@
 #define HAL_DISPLAY_ILI9341
 #endif
 
-// Requested TFT SPI clock (Hz) for both panel families; the actual rate is
-// clk_peri divided by an even divisor.
+// Requested TFT SPI clock (Hz) for both panel families: frequencyHz of the spi
+// bus in device_tree.json. The actual rate is clk_peri divided by an even
+// divisor.
 #ifndef JH_ILI9341_SPI_DEFAULT_HZ
-#define JH_ILI9341_SPI_DEFAULT_HZ 50000000
+#define JH_ILI9341_SPI_DEFAULT_HZ JH_HW_BUS_SPI_FREQUENCY_HZ
 #endif
 #ifndef JH_ST77XX_SPI_DEFAULT_HZ
 #define JH_ST77XX_SPI_DEFAULT_HZ JH_ILI9341_SPI_DEFAULT_HZ

@@ -1,0 +1,292 @@
+{
+  "$schema": "../libraries/JaszczurHAL/config/hardware/device_tree.schema.json",
+  "schemaVersion": 1,
+  "nodes": {
+    "tft": {
+      "compatible": "jaszczurhal,spi-device"
+    },
+    "tftDc": {
+      "compatible": "jaszczurhal,gpio-output"
+    },
+    "tftReset": {
+      "compatible": "jaszczurhal,gpio-output",
+      "properties": {
+        "activeLow": true
+      }
+    },
+    "audio": {
+      "compatible": "jaszczurhal,pwm-output"
+    },
+    "buttonUp": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    },
+    "buttonDown": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    },
+    "buttonLeft": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    },
+    "buttonRight": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    },
+    "buttonFire": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    },
+    "buttonUse": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    },
+    "buttonMenu": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    },
+    "buttonAccept": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    },
+    "buttonBack": {
+      "compatible": "jaszczurhal,gpio-input",
+      "properties": {
+        "activeLow": true,
+        "pull": "up"
+      }
+    }
+  },
+  "assemblies": {
+    "pico2w": {
+      "target": "rp2350-arm",
+      "board": "pico2w",
+      "clock": {
+        "tree": "default"
+      },
+      "statusLed": {
+        "node": "board.statusLed"
+      },
+      "buses": {
+        "spi": {
+          "kind": "spi",
+          "index": 0,
+          "frequencyHz": 50000000,
+          "pins": {
+            "sck": 18,
+            "mosi": 19,
+            "miso": 16
+          }
+        }
+      },
+      "nodes": {
+        "tft": {
+          "present": true,
+          "bus": "spi",
+          "pins": {
+            "cs": 17
+          }
+        },
+        "tftDc": {
+          "present": true,
+          "pins": {
+            "out": 20
+          }
+        },
+        "tftReset": {
+          "present": true,
+          "pins": {
+            "out": 21
+          }
+        },
+        "audio": {
+          "present": true,
+          "pins": {
+            "out": 6
+          }
+        },
+        "buttonUp": {
+          "present": true,
+          "pins": {
+            "in": 2
+          }
+        },
+        "buttonDown": {
+          "present": true,
+          "pins": {
+            "in": 3
+          }
+        },
+        "buttonLeft": {
+          "present": true,
+          "pins": {
+            "in": 4
+          }
+        },
+        "buttonRight": {
+          "present": true,
+          "pins": {
+            "in": 5
+          }
+        },
+        "buttonFire": {
+          "present": true,
+          "pins": {
+            "in": 7
+          }
+        },
+        "buttonUse": {
+          "present": true,
+          "pins": {
+            "in": 8
+          }
+        },
+        "buttonMenu": {
+          "present": true,
+          "pins": {
+            "in": 9
+          }
+        },
+        "buttonAccept": {
+          "present": true,
+          "pins": {
+            "in": 10
+          }
+        },
+        "buttonBack": {
+          "present": true,
+          "pins": {
+            "in": 11
+          }
+        }
+      }
+    },
+    "rp2040-plus": {
+      "target": "rp2040",
+      "board": "rp2040-plus-4mb",
+      "clock": {
+        "tree": "default"
+      },
+      "statusLed": {
+        "node": "board.statusLed"
+      },
+      "buses": {
+        "spi": {
+          "kind": "spi",
+          "index": 0,
+          "frequencyHz": 50000000,
+          "pins": {
+            "sck": 18,
+            "mosi": 19,
+            "miso": 16
+          }
+        }
+      },
+      "nodes": {
+        "tft": {
+          "present": true,
+          "bus": "spi",
+          "pins": {
+            "cs": 17
+          }
+        },
+        "tftDc": {
+          "present": true,
+          "pins": {
+            "out": 20
+          }
+        },
+        "tftReset": {
+          "present": true,
+          "pins": {
+            "out": 21
+          }
+        },
+        "audio": {
+          "present": true,
+          "pins": {
+            "out": 6
+          }
+        },
+        "buttonUp": {
+          "present": true,
+          "pins": {
+            "in": 2
+          }
+        },
+        "buttonDown": {
+          "present": true,
+          "pins": {
+            "in": 3
+          }
+        },
+        "buttonLeft": {
+          "present": true,
+          "pins": {
+            "in": 4
+          }
+        },
+        "buttonRight": {
+          "present": true,
+          "pins": {
+            "in": 5
+          }
+        },
+        "buttonFire": {
+          "present": true,
+          "pins": {
+            "in": 7
+          }
+        },
+        "buttonUse": {
+          "present": true,
+          "pins": {
+            "in": 8
+          }
+        },
+        "buttonMenu": {
+          "present": true,
+          "pins": {
+            "in": 9
+          }
+        },
+        "buttonAccept": {
+          "present": true,
+          "pins": {
+            "in": 10
+          }
+        },
+        "buttonBack": {
+          "present": true,
+          "pins": {
+            "in": 11
+          }
+        }
+      }
+    }
+  }
+}

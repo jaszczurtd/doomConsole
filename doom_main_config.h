@@ -9,6 +9,16 @@
  * header is included.
  */
 
+/* Wiring comes from the generated jh_hardware.h of the assembly, which every
+ * firmware unit gets as JH_HARDWARE_HEADER; a #if on a missing JH_HW_* macro
+ * would silently read 0. */
+#if defined(JH_HARDWARE_HEADER)
+#include JH_HARDWARE_HEADER
+#endif
+#ifndef JH_HW_SCHEMA_VERSION
+#error "doomConsole builds from device_tree.json; JH_HARDWARE_HEADER is missing"
+#endif
+
 /* Boot/probe */
 #ifndef DOOM_BOOT_LED_PIN
 #ifdef HAL_LED_BUILTIN
@@ -39,8 +49,8 @@
 
 /* System clock / overclock.
  *
- * Native rp2040-doom runs the core at 270 MHz @ 1.30V; the Arduino-Pico core
- * boots low and the port's own set_sys_clock_khz() is compiled out (see
+ * Native rp2040-doom runs the core at 270 MHz @ 1.30V; the Pico SDK boots at
+ * its default clock and the port's own set_sys_clock_khz() is compiled out (see
  * src/i_main.c, gated by !JASZCZURHAL_PORT), so we re-issue it in app_start().
  *
  * The value is chosen per chip so clk_peri (= clk_sys) divides cleanly to the
@@ -73,28 +83,10 @@
 #error "DOOM_HIGHRES_SCENE with ST7796S is supported only on RP2350 builds."
 #endif
 
-#ifndef DOOM_HAL_TFT_SCK_PIN
-#define DOOM_HAL_TFT_SCK_PIN 18u
-#endif
-
-#ifndef DOOM_HAL_TFT_MOSI_PIN
-#define DOOM_HAL_TFT_MOSI_PIN 19u
-#endif
-
-#ifndef DOOM_HAL_TFT_MISO_PIN
-#define DOOM_HAL_TFT_MISO_PIN 16u
-#endif
-
-#ifndef DOOM_HAL_TFT_CS_PIN
-#define DOOM_HAL_TFT_CS_PIN 17u
-#endif
-
-#ifndef DOOM_HAL_TFT_DC_PIN
-#define DOOM_HAL_TFT_DC_PIN 20u
-#endif
-
-#ifndef DOOM_HAL_TFT_RST_PIN
-#define DOOM_HAL_TFT_RST_PIN 21u
+/* The TFT wiring is bus spi and nodes tft, tftDc and tftReset of
+ * device_tree.json. hal_display_init() drives the panel on SPI 0. */
+#if JH_HW_BUS_SPI_INDEX != 0
+#error "hal_display_init() drives the TFT on SPI 0"
 #endif
 
 #ifndef DOOM_HAL_TFT_NATIVE_WIDTH
@@ -152,7 +144,7 @@
 // render frame N+1 while core1 streams frame N to the TFT. Full-panel scene
 // modes use that RAM for the larger framebuffer instead.
 #ifndef DOOM_VIDEO_DOUBLE_BUFFER
-#if PICO_RP2350 && (!DOOM_HIGHRES_SCENE || defined(DOOM_TFT_PANEL_ILI9341))
+#if PICO_RP2350 && (!DOOM_HIGHRES_SCENE || !defined(DOOM_TFT_PANEL_ST7796S))
 #define DOOM_VIDEO_DOUBLE_BUFFER 1
 #else
 #define DOOM_VIDEO_DOUBLE_BUFFER 0
@@ -205,45 +197,17 @@ static inline uint32_t DoomEstimateRp2040SpiActualHz(uint32_t peri_hz,
 }
 
 /* GPIO input */
-// Selects active-low button wiring with internal pull-ups.
-#ifndef DOOM_INPUT_ACTIVE_LOW
-#define DOOM_INPUT_ACTIVE_LOW 1
-#endif
-
-#ifndef DOOM_INPUT_PIN_UP
-#define DOOM_INPUT_PIN_UP 2
-#endif
-
-#ifndef DOOM_INPUT_PIN_DOWN
-#define DOOM_INPUT_PIN_DOWN 3
-#endif
-
-#ifndef DOOM_INPUT_PIN_LEFT
-#define DOOM_INPUT_PIN_LEFT 4
-#endif
-
-#ifndef DOOM_INPUT_PIN_RIGHT
-#define DOOM_INPUT_PIN_RIGHT 5
-#endif
-
-#ifndef DOOM_INPUT_PIN_FIRE
-#define DOOM_INPUT_PIN_FIRE 7
-#endif
-
-#ifndef DOOM_INPUT_PIN_USE
-#define DOOM_INPUT_PIN_USE 8
-#endif
-
-#ifndef DOOM_INPUT_PIN_MENU
-#define DOOM_INPUT_PIN_MENU 9
-#endif
-
-#ifndef DOOM_INPUT_PIN_ACCEPT
-#define DOOM_INPUT_PIN_ACCEPT 10
-#endif
-
-#ifndef DOOM_INPUT_PIN_BACK
-#define DOOM_INPUT_PIN_BACK 11
+// Pins and polarity come from the button nodes of device_tree.json. The input
+// backend applies the activeLow of buttonUp to every button.
+#if (JH_HW_NODE_BUTTON_DOWN_PROP_ACTIVE_LOW != JH_HW_NODE_BUTTON_UP_PROP_ACTIVE_LOW) || \
+    (JH_HW_NODE_BUTTON_LEFT_PROP_ACTIVE_LOW != JH_HW_NODE_BUTTON_UP_PROP_ACTIVE_LOW) || \
+    (JH_HW_NODE_BUTTON_RIGHT_PROP_ACTIVE_LOW != JH_HW_NODE_BUTTON_UP_PROP_ACTIVE_LOW) || \
+    (JH_HW_NODE_BUTTON_FIRE_PROP_ACTIVE_LOW != JH_HW_NODE_BUTTON_UP_PROP_ACTIVE_LOW) || \
+    (JH_HW_NODE_BUTTON_USE_PROP_ACTIVE_LOW != JH_HW_NODE_BUTTON_UP_PROP_ACTIVE_LOW) || \
+    (JH_HW_NODE_BUTTON_MENU_PROP_ACTIVE_LOW != JH_HW_NODE_BUTTON_UP_PROP_ACTIVE_LOW) || \
+    (JH_HW_NODE_BUTTON_ACCEPT_PROP_ACTIVE_LOW != JH_HW_NODE_BUTTON_UP_PROP_ACTIVE_LOW) || \
+    (JH_HW_NODE_BUTTON_BACK_PROP_ACTIVE_LOW != JH_HW_NODE_BUTTON_UP_PROP_ACTIVE_LOW)
+#error "the buttons share one active level"
 #endif
 
 // Hold the physical Menu and Back buttons for this long to open pairing.
@@ -275,10 +239,6 @@ static inline uint32_t DoomEstimateRp2040SpiActualHz(uint32_t peri_hz,
 #endif
 
 /* Audio */
-#ifndef DOOM_HAL_AUDIO_PWM_PIN
-#define DOOM_HAL_AUDIO_PWM_PIN 6u
-#endif
-
 // PWM resolution used by the DAC-less audio output.
 #ifndef DOOM_HAL_AUDIO_PWM_BITS
 #define DOOM_HAL_AUDIO_PWM_BITS 12u

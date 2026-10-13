@@ -67,19 +67,20 @@ extern "C" void app_start(void) {
   deb("HAL GPIO OK, LED pin=%u", (unsigned int)DOOM_BOOT_PROBE_LED_PIN);
 
   deb("HAL SPI init: bus=0 miso=%u mosi=%u sck=%u",
-      (unsigned int)DOOM_HAL_TFT_MISO_PIN,
-      (unsigned int)DOOM_HAL_TFT_MOSI_PIN,
-      (unsigned int)DOOM_HAL_TFT_SCK_PIN);
-  hal_spi_init(0u, (uint8_t)DOOM_HAL_TFT_MISO_PIN,
-               (uint8_t)DOOM_HAL_TFT_MOSI_PIN,
-               (uint8_t)DOOM_HAL_TFT_SCK_PIN);
+      (unsigned int)JH_HW_BUS_SPI_PIN_MISO,
+      (unsigned int)JH_HW_BUS_SPI_PIN_MOSI,
+      (unsigned int)JH_HW_BUS_SPI_PIN_SCK);
+  hal_spi_init(JH_HW_BUS_SPI_INDEX, (uint8_t)JH_HW_BUS_SPI_PIN_MISO,
+               (uint8_t)JH_HW_BUS_SPI_PIN_MOSI,
+               (uint8_t)JH_HW_BUS_SPI_PIN_SCK);
 
   deb("TFT init begin: cs=%u dc=%u rst=%u",
-      (unsigned int)DOOM_HAL_TFT_CS_PIN,
-      (unsigned int)DOOM_HAL_TFT_DC_PIN,
-      (unsigned int)DOOM_HAL_TFT_RST_PIN);
-  hal_display_init((uint8_t)DOOM_HAL_TFT_CS_PIN, (uint8_t)DOOM_HAL_TFT_DC_PIN,
-                   (uint8_t)DOOM_HAL_TFT_RST_PIN);
+      (unsigned int)JH_HW_NODE_TFT_PIN_CS,
+      (unsigned int)JH_HW_NODE_TFT_DC_PIN_OUT,
+      (unsigned int)JH_HW_NODE_TFT_RESET_PIN_OUT);
+  hal_display_init((uint8_t)JH_HW_NODE_TFT_PIN_CS,
+                   (uint8_t)JH_HW_NODE_TFT_DC_PIN_OUT,
+                   (uint8_t)JH_HW_NODE_TFT_RESET_PIN_OUT);
   s_display_ready =
       hal_display_configure(DOOM_HAL_TFT_NATIVE_WIDTH,
                             DOOM_HAL_TFT_NATIVE_HEIGHT,

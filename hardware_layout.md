@@ -5,32 +5,32 @@
 The current JaszczurHAL input backend uses simple GPIO buttons connected
 between the signal pin and GND.
 
-Default electrical layout:
+Pins and polarity come from the button nodes of `device_tree.json`, the same
+in both assemblies:
 
-- Input mode: `HAL_GPIO_INPUT_PULLUP`
-- Active state: low
-- Override polarity with `DOOM_INPUT_ACTIVE_LOW`
+- Input mode: `HAL_GPIO_INPUT_PULLUP` (`pull: up`)
+- Active state: low (`activeLow`)
 
-Default button map:
+Button map:
 
-| Function | GPIO pin | Doom key | Override macro |
+| Function | GPIO pin | Doom key | Node |
 | --- | ---: | --- | --- |
-| Up | 2 | `KEY_UPARROW` | `DOOM_INPUT_PIN_UP` |
-| Down | 3 | `KEY_DOWNARROW` | `DOOM_INPUT_PIN_DOWN` |
-| Left | 4 | `KEY_LEFTARROW` | `DOOM_INPUT_PIN_LEFT` |
-| Right | 5 | `KEY_RIGHTARROW` | `DOOM_INPUT_PIN_RIGHT` |
-| Fire | 7 | `KEY_RCTRL` | `DOOM_INPUT_PIN_FIRE` |
-| Use | 8 | Space | `DOOM_INPUT_PIN_USE` |
-| Menu | 9 | `KEY_ESCAPE` | `DOOM_INPUT_PIN_MENU` |
-| Accept | 10 | `KEY_ENTER` | `DOOM_INPUT_PIN_ACCEPT` |
-| Back | 11 | `KEY_BACKSPACE` | `DOOM_INPUT_PIN_BACK` |
+| Up | 2 | `KEY_UPARROW` | `buttonUp` |
+| Down | 3 | `KEY_DOWNARROW` | `buttonDown` |
+| Left | 4 | `KEY_LEFTARROW` | `buttonLeft` |
+| Right | 5 | `KEY_RIGHTARROW` | `buttonRight` |
+| Fire | 7 | `KEY_RCTRL` | `buttonFire` |
+| Use | 8 | Space | `buttonUse` |
+| Menu | 9 | `KEY_ESCAPE` | `buttonMenu` |
+| Accept | 10 | `KEY_ENTER` | `buttonAccept` |
+| Back | 11 | `KEY_BACKSPACE` | `buttonBack` |
 
 Implementation: `src/jaszczurhal/doom_input_hal.c`.
 
 ## Bluetooth Gamepad
 
-The `rp2350-arm:pico2w` profile enables the JaszczurHAL Bluetooth Classic
-gamepad feature. The first supported controller is an 8BitDo Zero 2 in Android
+Builds of the `pico2w` assembly (RP2350 ARM) enable the JaszczurHAL Bluetooth
+Classic gamepad feature. The first supported controller is an 8BitDo Zero 2 in Android
 D-input mode. GPIO and Bluetooth actions are combined, so the physical buttons
 remain usable while a controller is connected.
 
@@ -72,19 +72,18 @@ Implementation: `src/jaszczurhal/doom_gamepad_input.c`.
 
 ## TFT Display
 
-Test platform: Waveshare RP2040-Plus 4 MB with a 2.8" SPI TFT using the
-ILI9341 controller.
+Both assemblies, Raspberry Pi Pico 2 W and Waveshare RP2040-Plus 4 MB, wire a
+2.8" SPI TFT with the ILI9341 controller the same way; the ST7796S variant uses
+the same lines on the Pico 2 W. `device_tree.json` holds the wiring.
 
-Default display wiring:
-
-| Display signal | Pico GPIO | Notes |
+| Display signal | GPIO | Notes |
 | --- | ---: | --- |
 | `SCK` / `CLK` | 18 | SPI0 clock, JaszczurHAL default bus 0 |
 | `MOSI` / `SDA` / `DIN` | 19 | SPI0 TX, data from the Pico to display |
 | `MISO` / `SDO` | 16 | Optional for display-only ILI9341 use |
-| `CS` | 17 | `DOOM_HAL_TFT_CS_PIN` |
-| `DC` / `D/C` / `RS` | 20 | `DOOM_HAL_TFT_DC_PIN` |
-| `RST` / `RESET` | 21 | `DOOM_HAL_TFT_RST_PIN` |
+| `CS` | 17 | Node `tft`, pin `cs` |
+| `DC` / `D/C` / `RS` | 20 | Node `tftDc` |
+| `RST` / `RESET` | 21 | Node `tftReset` |
 | `VCC` | 3V3 | Use 3.3 V logic |
 | `GND` | GND | Common ground |
 | `LED` / `BL` | 3V3 | Backlight always on for the current firmware |
@@ -111,31 +110,32 @@ This layout requires at least 4 MB of physical flash. The included
 `doom1.whx` is about 1.8 MB, so it cannot share the original 2 MB Pico flash
 with the current firmware.
 
-For the RP2040-Plus 4 MB verification build, select JaszczurHAL target
-`rp2040` and board profile `rp2040-plus-4mb`. The profile selects the official
-Pico SDK board definition and verifies that the target has exactly 4 MB of
-flash. The raw WHD/WHDX payload may occupy the region from `0x10200000` up to,
-but not including, the application storage reservation. The uploader enforces
-this boundary before accessing the board.
+The `rp2040-plus` assembly uses the `rp2040-plus-4mb` board profile. The
+profile selects the official Pico SDK board definition and verifies that the
+target has exactly 4 MB of flash. The raw WHD/WHDX payload may occupy the
+region from `0x10200000` up to, but not including, the application storage
+reservation. The uploader enforces this boundary before accessing the board.
 
 Hardware bring-up sequence:
 
 1. Put the board in BOOTSEL mode.
 2. Start the persistent serial monitor (`Ctrl+Shift+3`) if boot diagnostics are
-   needed. The firmware opens USB CDC at `115200` and holds for 8 seconds before
+   needed. The firmware opens USB CDC at `115200` and holds for 4 seconds (`DOOM_BOOT_DIAG_HOLD_MS`) before
    entering Doom, printing `[boot]` and `[video]` diagnostics.
-3. Run `Project: Upload (UF2 / BOOTSEL)` to build and copy
-   `.build/firmware.uf2` to the BOOTSEL drive.
+3. Run `Project: Upload (UF2 / BOOTSEL)` to build and copy the UF2 of the
+   selected assembly, e.g. `.build/rp2350-arm/pico2w/firmware.uf2`, to the
+   BOOTSEL drive.
 4. Put the board in BOOTSEL mode again and run `Project: Upload WHX Payload`.
    The task writes `doom1.whx` at `0x10200000` with picotool, verifies the
    payload, and reboots the board.
 
-The active RP2040-Plus verification build defines `WHD_SUPER_TINY=1`, so the
-payload magic expected at `0x10200000` is `IWHX`.
+The build defines `WHD_SUPER_TINY=1`, so the payload magic expected at
+`0x10200000` is `IWHX`.
 
 Manual fallback:
 
-1. Flash firmware UF2 from `.build/firmware.uf2`.
+1. Flash the firmware UF2 of the assembly, e.g.
+   `.build/rp2350-arm/pico2w/firmware.uf2`.
 2. Load the raw WHX payload with:
 
    ```sh

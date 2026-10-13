@@ -56,9 +56,9 @@ jobs:
         working-directory: workspace/doomConsole
         run: |
           $entry = '..\libraries\JaszczurHAL\vscode\entry\jh-vscode.cmd'
-          & $entry build --project . --target rp2350-arm --board pico2w
+          & $entry build --project . --assembly pico2w
           if ($LASTEXITCODE -ne 0) { throw 'RP2350 ARM doomConsole build failed.' }
-          & $entry refresh-intellisense --project . --target rp2350-arm --board pico2w
+          & $entry refresh-intellisense --project . --assembly pico2w
           if ($LASTEXITCODE -ne 0) { throw 'doomConsole IntelliSense refresh failed.' }
 
       - name: Verify checkout stayed clean
@@ -77,8 +77,8 @@ jobs:
         with:
           name: doom-console-windows-rp2350-arm
           path: |
-            workspace/doomConsole/.build/firmware.elf
-            workspace/doomConsole/.build/firmware.bin
-            workspace/doomConsole/.build/firmware.uf2
-            workspace/doomConsole/.build/compile_commands_patched.json
+            workspace/doomConsole/.build/rp2350-arm/pico2w/firmware.elf
+            workspace/doomConsole/.build/rp2350-arm/pico2w/firmware.bin
+            workspace/doomConsole/.build/rp2350-arm/pico2w/firmware.uf2
+            workspace/doomConsole/.build/rp2350-arm/pico2w/compile_commands_patched.json
           if-no-files-found: error

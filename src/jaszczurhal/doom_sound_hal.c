@@ -580,7 +580,7 @@ static boolean I_Pico_InitSound(boolean _use_sfx_prefix)
     music_generator = NULL;
 
     hal_dma_pwm_audio_config_t cfg = {
-        .pwm_pin = DOOM_HAL_AUDIO_PWM_PIN,
+        .pwm_pin = JH_HW_NODE_AUDIO_PIN_OUT,
         .sample_rate_hz = PICO_SOUND_SAMPLE_FREQ,
         .period_ticks = DOOM_HAL_AUDIO_PWM_PERIOD_TICKS,
         .buffer_a = s_pwm_buffer_a,

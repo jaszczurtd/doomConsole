@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +15,15 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 JASZCZURHAL_ROOT = REPO_ROOT.parent / "libraries" / "JaszczurHAL"
+sys.path.insert(0, str(JASZCZURHAL_ROOT / "scripts"))
+
+import device_tree_project  # noqa: E402
+
+# The button pins come from device_tree.json: the units see the jh_hardware.h
+# of the assembly the tracked manifest selects.
+ASSEMBLY = json.loads(
+    (REPO_ROOT / ".vscode" / "jaszczurhal.project.json").read_text(encoding="utf-8")
+)["assembly"]
 
 
 class GamepadInputTests(unittest.TestCase):
@@ -32,6 +43,7 @@ class GamepadInputTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix=f"{name}-") as tmp:
             suffix = ".exe" if os.name == "nt" else ""
             executable = Path(tmp) / f"{name}{suffix}"
+            header = device_tree_project.hardware_header(REPO_ROOT, ASSEMBLY, Path(tmp))
             command = [
                 compiler,
                 "-std=c17",
@@ -41,6 +53,10 @@ class GamepadInputTests(unittest.TestCase):
                 "-DHAL_TARGET_MOCK=1",
                 "-DHAL_ENABLE_BLUETOOTH_GAMEPAD=1",
                 "-DHAL_ENABLE_KV=1",
+                # Pins only: JH_HARDWARE_HEADER would put the mock HAL in
+                # device tree mode, which needs a finalized board header.
+                "-include",
+                str(header),
                 *(f"-D{define}" for define in (extra_defines or [])),
                 "-I",
                 str(REPO_ROOT / "tests" / "support"),

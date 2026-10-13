@@ -32,8 +32,9 @@ work, but changes the platform layer:
 - Application entry is JaszczurHAL-style `app_start()`, `app_task0()`, `app_task1()`.
 - Firmware is built by CMake against the official Pico SDK through
   JaszczurHAL's native RP build.
-- Video output is a 320x200 indexed Doom framebuffer converted to RGB565 and
-  streamed to a HAL TFT display.
+- Video output is an indexed Doom framebuffer (320x240 with the tracked
+  `DOOM_HIGHRES_SCENE=1`, the classic 320x200 without it, 480x320 on the
+  ST7796S panel) converted to RGB565 and streamed to a HAL TFT display.
 - Core1 is used for asynchronous TFT flush and experimental renderer helper
   work.
 - Audio is routed through JaszczurHAL DMA PWM audio.
@@ -60,8 +61,9 @@ Current measurements show the main cost in wall/BSP column rendering.
 
 Important current traits:
 
-- Tested configuration uses Waveshare RP2040 Plus / 4 MB style target, and 
-  Raspberry pi pico2 (RP2350).
+- `device_tree.json` describes the two configurations: Raspberry Pi Pico 2 W
+  (RP2350, assembly `pico2w`) and Waveshare RP2040-Plus with 4 MB flash
+  (assembly `rp2040-plus`).
 - The default WHD/WHX payload address is `0x10200000`.
 - The active Pico 2 W build is tuned for a TFT display, HAL GPIO buttons, and
   an optional 8BitDo Zero 2 Bluetooth gamepad.
@@ -95,15 +97,18 @@ VS Code uses the shared JaszczurHAL entrypoint:
 ../libraries/JaszczurHAL/vscode/entry/jh-vscode
 ```
 
-The tooling metadata (target, board profile, CMake build directory, USB
-identity, artifacts) lives in `.vscode/jaszczurhal.project.json`. The build
-options live in `hal_project_config.h`, which the HAL, the recipe and the
-tooling read the same way:
+The tooling metadata (assembly, CMake build directory, USB identity,
+artifacts) lives in `.vscode/jaszczurhal.project.json`. `device_tree.json`
+describes the board, panel, buttons and audio pin of each assembly: `pico2w`
+(Raspberry Pi Pico 2 W, the tracked default) and `rp2040-plus` (Waveshare
+RP2040-Plus, 4 MB flash). The build options live in `hal_project_config.h`,
+which the HAL, the recipe and the tooling read the same way:
 
 - `DOOM_HIGHRES_SCENE` - render the scene at the full panel resolution:
-  `320x240` on ILI9341 or `480x320` on ST7796S.
+  `320x240` on ILI9341 or `480x320` on ST7796S; `0` keeps the classic 320x200
+  scene.
 - `JH_ILI9341_SPI_DEFAULT_HZ` - requested TFT SPI clock for both panel
-  families.
+  families; by default `frequencyHz` of the `spi` bus in `device_tree.json`.
 - `DOOM_DUAL_CORE_COLUMNS`, `DOOM_RENDER_ASYNC_PLANES`,
   `DOOM_VIDEO_SYNC_FLUSH` - renderer/flush experiments; the default active
   values are conservative.
@@ -114,54 +119,16 @@ The system clock request (`DOOM_SYS_CLOCK_KHZ`) is chosen per chip in
 The header also declares two variants, built with `--variant <id>` (or the
 `Project: Build variant` tasks):
 
-- `ST7796S` - the ST7796S panel instead of the ILI9341; RP2350/Pico 2 only.
+- `ST7796S` - the ST7796S panel instead of the ILI9341. Its framebuffer and
+  flush buffers are RP2350-only, so the variant exists for `pico2w` alone.
 - `BOOT_PROBE` - a minimal `app_start`/`app_task0` smoke-test firmware.
 
-To use the classic ILI9341 path, set `DOOM_HIGHRES_SCENE` to `0` in
-`hal_project_config.h`. This works on RP2040 and RP2350 builds. For a Raspberry Pi Pico, select the
-native RP2040 target and its `pico` board profile:
+Both assemblies run the ILI9341 path, with or without highres. An RP2040 board
+needs 4 MB flash for the WHX payload at `0x10200000`, so a 2 MB Raspberry Pi
+Pico is not supported; describe another 4 MB board as an assembly in
+`device_tree.json` instead.
 
-```json
-{
-    "target": "rp2040",
-    "board": "pico"
-}
-```
-
-To fill the whole 320x240 ILI9341 panel, enable highres while keeping the
-ILI9341 driver:
-
-```json
-{
-    "cmake": {
-        "cache": {
-            "DOOM_TFT_PANEL": "ili9341",
-            "DOOM_HIGHRES_SCENE": "1"
-        }
-    }
-}
-```
-
-To use the 4.0 inch ST7796S 480x320 path, select an RP2350/Pico 2 board and
-enable highres:
-
-```json
-{
-    "target": "rp2350-arm",
-    "board": "pico2w",
-    "cmake": {
-        "cache": {
-            "DOOM_TFT_PANEL": "st7796s",
-            "DOOM_HIGHRES_SCENE": "1"
-        }
-    }
-}
-```
-
-`ST7796S` is intentionally rejected for RP2040 targets.  The ST7796S full-panel
-framebuffer and flush buffers are RP2350-only.
-
-After changing the manifest, regenerate the CMake cache and rebuild:
+After changing the configuration, rebuild:
 
 ```bash
 ../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project .
@@ -215,14 +182,11 @@ Other CMake targets:
 - `firmware_upload` - firmware build prerequisite used by the upload workflow.
 - `firmware_compile_db` - compile database refresh target.
 
-The generated outputs are placed under `.build/`, including:
-
-- `.build/firmware.elf`
-- `.build/firmware.bin`
-- `.build/firmware.uf2`
-
-Detailed linker output, including `firmware.elf.map`, remains in the resolved
-target/board directory below `.build/cmake/`.
+The generated outputs of an assembly are placed under
+`.build/<target>/<assembly>/` (a variant under `variants/<id>` there), for
+example `.build/rp2350-arm/pico2w/firmware.uf2`, together with
+`firmware.elf` and `firmware.bin`. Detailed linker output, including
+`firmware.elf.map`, remains in the CMake build directory below `.build/cmake/`.
 
 The `Windows firmware` workflow runs uploader/unit tests, validates the managed
 picotool dry run, builds the default RP2350 ARM/Pico 2 W firmware and refreshes
@@ -231,17 +195,16 @@ remains a manual BOOTSEL smoke test.
 
 ## Board And Upload Flow
 
-Board selection uses the JaszczurHAL target and board profile in
-`.vscode/jaszczurhal.project.json`, with optional local overrides stored in
-`.vscode/jaszczurhal.local.json`. The tracked configuration selects:
+Board selection uses the assembly of `device_tree.json` that
+`.vscode/jaszczurhal.project.json` selects, with optional local overrides
+stored in `.vscode/jaszczurhal.local.json`. The tracked configuration selects:
 
 ```text
-target: rp2350-arm
-board:  pico2w
+assembly: pico2w
 ```
 
-Use the `Project: Select board` task or pass `--target` and `--board` to
-`jh-vscode` to select another supported RP profile.
+Use the `Project: Select board` task or pass `--assembly` to `jh-vscode` to
+select `rp2040-plus`.
 
 Firmware UF2 upload and WHX/WHD payload upload are intentionally separate.
 

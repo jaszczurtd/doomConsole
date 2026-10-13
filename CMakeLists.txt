@@ -260,6 +260,11 @@ set(DOOM_PORT_C_WARNING_FLAGS
     "-Wno-discarded-qualifiers"
 )
 
+# A device tree build signs its configuration with the ABI of the SDK flags.
+if(JH_DEVICE_TREE_BUILD)
+    jh_finalize_hardware_abi()
+endif()
+
 set(HAL_PROJECT_CONFIG_DIR "${JH_PROJECT_DIR}")
 # The variant's definitions reach the HAL and, through it, the Doom sources.
 set(EXTRA_HAL_DEFINES ${JH_PROJECT_DEFINITIONS})

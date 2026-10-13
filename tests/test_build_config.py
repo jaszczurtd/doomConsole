@@ -10,12 +10,19 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 JASZCZURHAL_ROOT = REPO_ROOT.parent / "libraries" / "JaszczurHAL"
 sys.path.insert(0, str(JASZCZURHAL_ROOT / "scripts"))
 
+import device_tree_project  # noqa: E402
 import project_config  # noqa: E402
 
 
 def build(target: str, variant: str | None = None) -> project_config.BuildConfig:
+    # The TFT clock comes from device_tree.json: read the header with the
+    # jh_hardware.h of the assembly for that target, as the build does.
     targets = project_config.load_targets(JASZCZURHAL_ROOT)
-    return project_config.evaluate_build(REPO_ROOT, targets[target], variant)
+    assembly = next(item["name"] for item in device_tree_project.assemblies(REPO_ROOT)
+                    if item["target"] == target)
+    with tempfile.TemporaryDirectory(prefix="doom-hardware-") as tmp:
+        header = device_tree_project.hardware_header(REPO_ROOT, assembly, Path(tmp))
+        return project_config.evaluate_build(REPO_ROOT, targets[target], variant, (), header)
 
 
 class BuildConfigTests(unittest.TestCase):

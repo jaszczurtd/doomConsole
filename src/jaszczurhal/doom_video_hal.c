@@ -347,8 +347,9 @@ void I_InitGraphics(void)
     V_RestoreBuffer();
     s_next_palette_num = 0;
 
-    hal_display_init((uint8_t)DOOM_HAL_TFT_CS_PIN, (uint8_t)DOOM_HAL_TFT_DC_PIN,
-                     (uint8_t)DOOM_HAL_TFT_RST_PIN);
+    hal_display_init((uint8_t)JH_HW_NODE_TFT_PIN_CS,
+                     (uint8_t)JH_HW_NODE_TFT_DC_PIN_OUT,
+                     (uint8_t)JH_HW_NODE_TFT_RESET_PIN_OUT);
     if (!hal_display_configure(DOOM_HAL_TFT_NATIVE_WIDTH,
                                DOOM_HAL_TFT_NATIVE_HEIGHT,
                                HAL_DISPLAY_ROTATION(DOOM_HAL_TFT_ROTATION_DEG),

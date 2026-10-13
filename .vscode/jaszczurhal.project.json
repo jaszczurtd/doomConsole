@@ -3,8 +3,7 @@
     "project": "doomConsole",
     "module": "rp2040_doom",
     "toolchain": "cmake",
-    "target": "rp2350-arm",
-    "board": "pico2w",
+    "assembly": "pico2w",
     "buildDir": "${project}/.build",
     "cmakeBuildDir": "${project}/.build/cmake",
     "cmake": {

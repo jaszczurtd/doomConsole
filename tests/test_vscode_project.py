@@ -11,10 +11,19 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-MANAGED_DEBUG_PROFILES = {
-    "Project: Debug Firmware",
-    "Project: Debug Firmware (RP2350 ARM)",
-    "Project: Debug Firmware (STM32G474 / ST-Link)",
+# One profile per assembly and variant of device_tree.json, each for its own
+# ELF; ST7796S exists only on the RP2350 assembly.
+RP2040 = ["interface/cmsis-dap.cfg", "target/rp2040.cfg"]
+RP2350 = ["interface/cmsis-dap.cfg", "target/rp2350.cfg"]
+DEBUG_PROFILES = {
+    "Project: Debug pico2w (RP2350 ARM)": ("rp2350-arm/pico2w", RP2350),
+    "Project: Debug pico2w variant: BOOT_PROBE (RP2350 ARM)":
+        ("rp2350-arm/pico2w/variants/BOOT_PROBE", RP2350),
+    "Project: Debug pico2w variant: ST7796S (RP2350 ARM)":
+        ("rp2350-arm/pico2w/variants/ST7796S", RP2350),
+    "Project: Debug rp2040-plus (RP2040)": ("rp2040/rp2040-plus", RP2040),
+    "Project: Debug rp2040-plus variant: BOOT_PROBE (RP2040)":
+        ("rp2040/rp2040-plus/variants/BOOT_PROBE", RP2040),
 }
 
 
@@ -64,8 +73,11 @@ class VscodeProjectTests(unittest.TestCase):
         )
         self.assertEqual(manifest["identity"]["usbVid"], "0x2e8a")
         self.assertEqual(manifest["identity"]["usbPid"], "0x0009")
-        self.assertEqual(manifest["target"], "rp2350-arm")
-        self.assertEqual(manifest["board"], "pico2w")
+        # The tracked assembly is the Pico 2 W of device_tree.json.
+        self.assertEqual(manifest["assembly"], "pico2w")
+        tree = json.loads((REPO_ROOT / "device_tree.json").read_text(encoding="utf-8"))
+        self.assertEqual(tree["assemblies"]["pico2w"]["target"], "rp2350-arm")
+        self.assertEqual(tree["assemblies"]["pico2w"]["board"], "pico2w")
         for name in ("settings.json", "tasks.json", "keybindings.reference.json"):
             content = (REPO_ROOT / ".vscode" / name).read_text(encoding="utf-8")
             for forbidden in ("/dev/", "/home/", ".arduino15", "SUDO_USER"):
@@ -77,11 +89,11 @@ class VscodeProjectTests(unittest.TestCase):
             profile["name"]: profile
             for profile in json.loads(launch)["configurations"]
         }
-        self.assertEqual(set(profiles), MANAGED_DEBUG_PROFILES)
-        self.assertEqual(
-            profiles["Project: Debug Firmware (STM32G474 / ST-Link)"]["configFiles"],
-            ["board/st_nucleo_g4.cfg"],
-        )
+        self.assertEqual(set(profiles), set(DEBUG_PROFILES))
+        for name, (build, config_files) in DEBUG_PROFILES.items():
+            self.assertEqual("${workspaceFolder}/.build/" + build + "/firmware.elf",
+                             profiles[name]["executable"], name)
+            self.assertEqual(config_files, profiles[name]["configFiles"], name)
 
 
 if __name__ == "__main__":

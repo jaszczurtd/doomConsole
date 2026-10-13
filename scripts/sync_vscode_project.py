@@ -48,6 +48,17 @@ def whx_upload_task() -> dict[str, Any]:
     }
 
 
+def manifest_selection(manifest: dict[str, Any]) -> tuple[str, str, str | None]:
+    """Target, board and assembly: with device_tree.json the assembly the
+    manifest selects, else the manifest's target and board."""
+    import device_tree_project
+
+    if device_tree_project.device_tree_path(REPO_ROOT) is None:
+        return str(manifest["target"]), str(manifest["board"]), None
+    entry, _ = device_tree_project.choose(REPO_ROOT, None, manifest.get("assembly"))
+    return entry["target"], entry["board"], entry["name"]
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="Fail if generated files differ.")
@@ -71,6 +82,9 @@ def main(argv: list[str]) -> int:
 
     from board_registry import tooling_target_registry
     from vscode_task_config import (
+        assembly_debug_builds,
+        assembly_launch_document,
+        sync_cortex_debug_launch_document,
         keybindings_reference,
         project_tasks_document,
         vscode_entry_settings,
@@ -81,13 +95,15 @@ def main(argv: list[str]) -> int:
     manifest = load_json(vscode_dir / "jaszczurhal.project.json")
     settings = load_json(vscode_dir / "settings.json")
     identity = manifest.get("identity") if isinstance(manifest.get("identity"), dict) else {}
+    target, board, assembly = manifest_selection(manifest)
     tasks = project_tasks_document(
         tooling_target_registry(jh_root),
-        str(manifest["target"]),
-        str(manifest["board"]),
+        target,
+        board,
         module=str(manifest["module"]),
         usb_product=str(identity.get("usbProduct") or ""),
         project_dir=REPO_ROOT,
+        selected_assembly=assembly,
     )
     insertion = next(
         (
@@ -119,6 +135,21 @@ def main(argv: list[str]) -> int:
         vscode_dir / "tasks.json": json_text(tasks, indent=2),
         vscode_dir / "keybindings.reference.json": json_text(keybindings),
     }
+    if assembly is not None:
+        # One debug profile per assembly, as sync-board-picker writes it.
+        launch_path = vscode_dir / "launch.json"
+        launch = load_json(launch_path) if launch_path.is_file() else {}
+        sync_cortex_debug_launch_document(
+            launch,
+            assembly_launch_document(
+                manifest,
+                assembly_debug_builds(REPO_ROOT),
+                workspace_dir=REPO_ROOT,
+                jh_root=jh_root,
+                default_assembly=assembly,
+            ),
+        )
+        expected[launch_path] = json_text(launch)
     mismatches = [
         path
         for path, content in expected.items()

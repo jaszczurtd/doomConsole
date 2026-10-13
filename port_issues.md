@@ -117,7 +117,8 @@ Measure gameplay FPS and `tus=bsp` on the device to assess the frame-rate gain.
 ## TFT Clock
 
 `JH_ILI9341_SPI_DEFAULT_HZ` in `hal_project_config.h` selects the requested
-clock for both supported TFT families; the header sets
+clock for both supported TFT families. By default it is `frequencyHz` of the
+`spi` bus in `device_tree.json`; the header sets
 `JH_ST77XX_SPI_DEFAULT_HZ` to the same value. The HAL drivers and the
 application read the same header, so both use that clock. The actual SPI rate
 also depends on the peripheral clock and available divisors.

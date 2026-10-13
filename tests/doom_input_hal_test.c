@@ -74,22 +74,22 @@ int main(void) {
   assert(s_event_count == 0u);
 
   const uint8_t input_pins[] = {
-      DOOM_INPUT_PIN_UP,    DOOM_INPUT_PIN_DOWN,   DOOM_INPUT_PIN_LEFT,
-      DOOM_INPUT_PIN_RIGHT, DOOM_INPUT_PIN_FIRE,   DOOM_INPUT_PIN_USE,
-      DOOM_INPUT_PIN_MENU,  DOOM_INPUT_PIN_ACCEPT, DOOM_INPUT_PIN_BACK,
+      JH_HW_NODE_BUTTON_UP_PIN_IN,    JH_HW_NODE_BUTTON_DOWN_PIN_IN,   JH_HW_NODE_BUTTON_LEFT_PIN_IN,
+      JH_HW_NODE_BUTTON_RIGHT_PIN_IN, JH_HW_NODE_BUTTON_FIRE_PIN_IN,   JH_HW_NODE_BUTTON_USE_PIN_IN,
+      JH_HW_NODE_BUTTON_MENU_PIN_IN,  JH_HW_NODE_BUTTON_ACCEPT_PIN_IN, JH_HW_NODE_BUTTON_BACK_PIN_IN,
   };
   for (size_t i = 0; i < sizeof(input_pins); ++i) {
     assert(s_pin_modes[input_pins[i]] == HAL_GPIO_INPUT_PULLUP);
   }
 
-  s_pin_high[DOOM_INPUT_PIN_FIRE] = false;
+  s_pin_high[JH_HW_NODE_BUTTON_FIRE_PIN_IN] = false;
   I_GetEvent();
   assert(s_event_count == 1u);
   expect_event(0u, ev_keydown, KEY_RCTRL);
 
   clear_events();
   s_gamepad_actions = DOOM_INPUT_ACTION_FIRE;
-  s_pin_high[DOOM_INPUT_PIN_FIRE] = true;
+  s_pin_high[JH_HW_NODE_BUTTON_FIRE_PIN_IN] = true;
   I_GetEvent();
   assert(s_event_count == 0u);
 
@@ -165,8 +165,8 @@ int main(void) {
 
   clear_events();
   s_now_ms = 100u;
-  s_pin_high[DOOM_INPUT_PIN_MENU] = false;
-  s_pin_high[DOOM_INPUT_PIN_BACK] = false;
+  s_pin_high[JH_HW_NODE_BUTTON_MENU_PIN_IN] = false;
+  s_pin_high[JH_HW_NODE_BUTTON_BACK_PIN_IN] = false;
   I_GetEvent();
   assert(s_event_count == 0u);
   assert(s_pairing_requests == 0u);
@@ -182,23 +182,23 @@ int main(void) {
   s_now_ms = 7000u;
   I_GetEvent();
   assert(s_pairing_requests == 1u);
-  s_pin_high[DOOM_INPUT_PIN_MENU] = true;
+  s_pin_high[JH_HW_NODE_BUTTON_MENU_PIN_IN] = true;
   I_GetEvent();
   assert(s_event_count == 0u);
-  s_pin_high[DOOM_INPUT_PIN_BACK] = true;
+  s_pin_high[JH_HW_NODE_BUTTON_BACK_PIN_IN] = true;
   I_GetEvent();
   assert(s_event_count == 0u);
 
   s_now_ms = 8000u;
-  s_pin_high[DOOM_INPUT_PIN_MENU] = false;
-  s_pin_high[DOOM_INPUT_PIN_BACK] = false;
+  s_pin_high[JH_HW_NODE_BUTTON_MENU_PIN_IN] = false;
+  s_pin_high[JH_HW_NODE_BUTTON_BACK_PIN_IN] = false;
   I_GetEvent();
   s_now_ms = 11000u;
   I_GetEvent();
   assert(s_pairing_requests == 2u);
 
-  s_pin_high[DOOM_INPUT_PIN_MENU] = true;
-  s_pin_high[DOOM_INPUT_PIN_BACK] = true;
+  s_pin_high[JH_HW_NODE_BUTTON_MENU_PIN_IN] = true;
+  s_pin_high[JH_HW_NODE_BUTTON_BACK_PIN_IN] = true;
   I_GetEvent();
 
   s_now_ms = 12000u;
