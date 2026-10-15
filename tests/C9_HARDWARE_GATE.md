@@ -1,5 +1,7 @@
 # C9 Persistent Gamepad Bond Hardware Gate
 
+[Polski](C9_HARDWARE_GATE.pl.md) · [Project overview](../README.md)
+
 Run this gate on `rp2350-arm:pico2w` with an 8BitDo Zero 2 in Android D-input
 mode. The current console has no physical buttons, so use the default
 buttonless build (`BT_AUTOMATIC_PAIRING=1`) and keep a complete serial log. Do
@@ -16,6 +18,7 @@ not publish a full Bluetooth address or link key in the result.
 3. Reboot and confirm exactly one bounded pairing window is opened because the
    bond is empty. Do not put any controller into pairing mode yet.
 4. Save the firmware revision, board identity, controller mode and timestamps.
+   Confirm the board LED responds during boot and gameplay.
    Identify the controller only by a short operator-assigned label.
 
 ## Required checks

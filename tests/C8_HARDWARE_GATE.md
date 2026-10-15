@@ -1,14 +1,16 @@
 # C8 Bluetooth Gamepad Hardware Gate
 
+[Polski](C8_HARDWARE_GATE.pl.md) · [Project overview](../README.md)
+
 Run this gate on `rp2350-arm:pico2w` with an 8BitDo Zero 2 in Android D-input
 mode. The host tests and firmware build do not replace this physical gate.
 
 ## Preparation
 
 1. Build and flash the default project manifest and the WHX payload.
-2. Connect all nine active-low GPIO buttons described in `hardware_layout.md`.
+2. Connect all nine active-low GPIO buttons described in [wiring and controls](../hardware_layout.md).
 3. Start the persistent serial monitor and save the complete log.
-4. With `BT_AUTOMATIC_PAIRING=1`, confirm the 120-second pairing message after
+4. With `BT_AUTOMATIC_PAIRING=1`, start with no stored bond and confirm the 120-second pairing message after
    startup, then start the Zero 2 with `B+Start` and press `Select` to pair.
    Repeat with the flag set to `0` and physical `Menu+Back` held for three
    seconds before accepting the final hardware gate.
@@ -21,10 +23,10 @@ mode. The host tests and firmware build do not replace this physical gate.
 - Navigate the menu and start a game with the pad.
 - Verify forward/backward movement, left/right turning, fire, use, menu/pause,
   accept, back, both `Y` + D-pad strafe directions, and direct `L`/`R` strafe
-  with the mapping in `hardware_layout.md`.
+  with the mapping in [wiring and controls](../hardware_layout.md).
 - Repeat the same flow using only GPIO, both with the pad connected and after
   it has disconnected.
-- Play continuously for 30 minutes.
+- Play continuously for 30 minutes. Confirm the board LED gives the expected damage feedback.
 - Perform 20 controller power-off/power-on reconnects in the same firmware
   runtime.
 - Disconnect once while holding each mapped pad control, including both strafe

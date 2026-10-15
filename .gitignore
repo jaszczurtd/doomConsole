@@ -64,3 +64,6 @@ GTAGS
 # jh-vscode user-local target, board and serial-port selection
 .vscode/jaszczurhal.local.json
 .vscode/c_cpp_properties.json
+
+# Local work journal
+NOW.md
