@@ -90,7 +90,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--jaszczurhal-root",
         type=Path,
-        default=Path(os.environ.get("JASZCZURHAL_ROOT", project_dir.parent / "libraries" / "JaszczurHAL")),
+        default=Path(os.environ.get("JASZCZURHAL_ROOT", project_dir.parent / "JaszczurHAL")),
         help="JaszczurHAL checkout used for managed-tool discovery.",
     )
     reboot = parser.add_mutually_exclusive_group()

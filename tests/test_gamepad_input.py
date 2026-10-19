@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-JASZCZURHAL_ROOT = REPO_ROOT.parent / "libraries" / "JaszczurHAL"
+JASZCZURHAL_ROOT = REPO_ROOT.parent / "JaszczurHAL"
 sys.path.insert(0, str(JASZCZURHAL_ROOT / "scripts"))
 
 import device_tree_project  # noqa: E402

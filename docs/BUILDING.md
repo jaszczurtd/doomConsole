@@ -3,7 +3,7 @@
 [Polski](BUILDING.pl.md) · [Project overview](../README.md)
 
 Run the commands from the DoomConsole directory. Keep JaszczurHAL at
-`../libraries/JaszczurHAL` and prepare its managed tools with `runmefirst.sh`
+`../JaszczurHAL` and prepare its managed tools with `runmefirst.sh`
 on Linux or `runmefirst.ps1` on Windows. This supplies the Pico SDK,
 compilers, CMake, Ninja and picotool used by the project.
 
@@ -16,15 +16,15 @@ compilers, CMake, Ninja and picotool used by the project.
 for that command, independently of the local choice.
 
 ```bash
-../libraries/JaszczurHAL/vscode/entry/jh-vscode config-dump --project . --assembly pico2w
-../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project . --assembly pico2w
-../libraries/JaszczurHAL/vscode/entry/jh-vscode refresh-intellisense --project . --assembly pico2w
+../JaszczurHAL/vscode/entry/jh-vscode config-dump --project . --assembly pico2w
+../JaszczurHAL/vscode/entry/jh-vscode build --project . --assembly pico2w
+../JaszczurHAL/vscode/entry/jh-vscode refresh-intellisense --project . --assembly pico2w
 ```
 
 On Windows, use the native launcher:
 
 ```powershell
-& ..\libraries\JaszczurHAL\vscode\entry\jh-vscode.cmd build --project . --assembly pico2w
+& ..\JaszczurHAL\vscode\entry\jh-vscode.cmd build --project . --assembly pico2w
 ```
 
 Replace `pico2w` with `rp2040-plus` for that assembly. Firmware outputs are
@@ -43,7 +43,7 @@ resolved build configuration.
 | `BOOT_PROBE` | Both | Minimal application-entry smoke test |
 
 ```bash
-../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project . --assembly pico2w --variant ST7796S
+../JaszczurHAL/vscode/entry/jh-vscode build --project . --assembly pico2w --variant ST7796S
 ```
 
 Variant outputs add `variants/<id>/` below the assembly output directory.

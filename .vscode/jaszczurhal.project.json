@@ -1,5 +1,5 @@
 {
-    "$schema": "../../libraries/JaszczurHAL/vscode/schema/jh_vscode_project.schema.json",
+    "$schema": "../../JaszczurHAL/vscode/schema/jh_vscode_project.schema.json",
     "project": "doomConsole",
     "module": "rp2040_doom",
     "toolchain": "cmake",
@@ -7,7 +7,7 @@
     "buildDir": "${project}/.build",
     "cmakeBuildDir": "${project}/.build/cmake",
     "cmake": {
-        "sourceDir": "${project}/../libraries/JaszczurHAL/cmake/jh_firmware_project",
+        "sourceDir": "${jhRoot}/cmake/jh_firmware_project",
         "cache": {
             "JH_PROJECT_DIR": "${project}",
             "JH_PROJECT_RECIPE": "${project}/CMakeLists.txt"

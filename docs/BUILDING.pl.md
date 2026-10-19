@@ -3,7 +3,7 @@
 [English](BUILDING.md) · [O projekcie](../README.pl.md)
 
 Polecenia uruchamiaj z katalogu DoomConsole. JaszczurHAL powinien znajdować się
-w `../libraries/JaszczurHAL`. Przygotuj jego narzędzia przez `runmefirst.sh`
+w `../JaszczurHAL`. Przygotuj jego narzędzia przez `runmefirst.sh`
 na Linuksie lub `runmefirst.ps1` na Windows. Instalują one Pico SDK,
 kompilatory, CMake, Ninja i picotool używane przez projekt.
 
@@ -16,15 +16,15 @@ pliku `.vscode/jaszczurhal.local.json`. Argument `--assembly` wybiera montaż
 dla danego polecenia, niezależnie od lokalnego ustawienia.
 
 ```bash
-../libraries/JaszczurHAL/vscode/entry/jh-vscode config-dump --project . --assembly pico2w
-../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project . --assembly pico2w
-../libraries/JaszczurHAL/vscode/entry/jh-vscode refresh-intellisense --project . --assembly pico2w
+../JaszczurHAL/vscode/entry/jh-vscode config-dump --project . --assembly pico2w
+../JaszczurHAL/vscode/entry/jh-vscode build --project . --assembly pico2w
+../JaszczurHAL/vscode/entry/jh-vscode refresh-intellisense --project . --assembly pico2w
 ```
 
 Na Windows użyj osobnego launchera:
 
 ```powershell
-& ..\libraries\JaszczurHAL\vscode\entry\jh-vscode.cmd build --project . --assembly pico2w
+& ..\JaszczurHAL\vscode\entry\jh-vscode.cmd build --project . --assembly pico2w
 ```
 
 Dla drugiego montażu zastąp `pico2w` przez `rp2040-plus`. Pliki wynikowe to
@@ -43,7 +43,7 @@ rozwiązaną konfigurację kompilacji.
 | `BOOT_PROBE` | Oba | Minimalny test uruchomienia aplikacji |
 
 ```bash
-../libraries/JaszczurHAL/vscode/entry/jh-vscode build --project . --assembly pico2w --variant ST7796S
+../JaszczurHAL/vscode/entry/jh-vscode build --project . --assembly pico2w --variant ST7796S
 ```
 
 Pliki wariantu trafiają do podkatalogu `variants/<id>/` w katalogu montażu.
