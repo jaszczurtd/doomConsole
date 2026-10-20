@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 JASZCZURHAL_ROOT = REPO_ROOT.parent / "JaszczurHAL"
 sys.path.insert(0, str(JASZCZURHAL_ROOT / "scripts"))
 
+import component_manager  # noqa: E402
 import device_tree_project  # noqa: E402
 
 # The button pins come from device_tree.json: the units see the jh_hardware.h
@@ -66,6 +67,8 @@ class GamepadInputTests(unittest.TestCase):
                 str(REPO_ROOT / "src"),
                 "-I",
                 str(JASZCZURHAL_ROOT / "src"),
+                "-I",
+                str(component_manager.jhbase_root(JASZCZURHAL_ROOT) / "include"),
                 *(str(source) for source in sources),
                 "-o",
                 str(executable),
