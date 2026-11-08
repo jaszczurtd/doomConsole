@@ -379,6 +379,23 @@
       "problemMatcher": "$gcc"
     },
     {
+      "label": "Project: Refresh IntelliSense variant: BOOT_PROBE",
+      "detail": "Update IntelliSense data for the BOOT_PROBE variant: Minimal app_start/app_task0 smoke test.",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "refresh-intellisense",
+        "--project",
+        "${workspaceFolder}",
+        "--variant",
+        "BOOT_PROBE"
+      ],
+      "problemMatcher": []
+    },
+    {
       "label": "Project: Build variant: ST7796S",
       "detail": "Build the ST7796S variant: ST7796S 480x320 panel instead of the ILI9341.",
       "type": "shell",
@@ -412,6 +429,23 @@
         "ST7796S"
       ],
       "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Project: Refresh IntelliSense variant: ST7796S",
+      "detail": "Update IntelliSense data for the ST7796S variant: ST7796S 480x320 panel instead of the ILI9341.",
+      "type": "shell",
+      "command": "${config:jaszczurhal.vscodeEntry}",
+      "windows": {
+        "command": "${config:jaszczurhal.vscodeEntryWindows}"
+      },
+      "args": [
+        "refresh-intellisense",
+        "--project",
+        "${workspaceFolder}",
+        "--variant",
+        "ST7796S"
+      ],
+      "problemMatcher": []
     },
     {
       "label": "Project: Check device tree",
